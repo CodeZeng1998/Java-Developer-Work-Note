@@ -124,3 +124,66 @@ nginx -s quit
 nginx -s reopen
 ```
 
+
+
+
+
+## 4.MongoDB
+
+```shell
+# 检查MongoDB是否正在运行
+systemctl status mongod
+
+
+```
+
+
+
+## 5.Kafka
+
+```shell
+# 【进入kafka/bin目录】
+# 查看kafka版本 
+./kafka-topics.sh --version
+# 查看所有topic
+./kafka-topics.sh --list --zookeeper localhost:2181
+# 发送消息到某个 topic
+./kafka-console-producer.sh --topic <topic_name> --bootstrap-server localhost:9092
+./kafka-console-producer.sh --broker-list localhost:9092 --topic <topic_name>
+
+
+```
+
+
+
+## 6.Maven
+
+```shell
+# 手动安装 jar 包
+mvn install:install-file -Dfile=jar包的位置 -DgroupId=你的groupId -DartifactId=你的artifactId -Dversion=你的版本号version -Dpackaging=jar
+
+# 查看版本号
+mvn --version
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

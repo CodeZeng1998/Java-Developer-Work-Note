@@ -105,6 +105,39 @@ int insert3(SysRole sysRole);
 
 
 
+## 2.SELECT
+
+### （1）模糊查询
+
+* bind用法
+
+使用 concat 函数连接字符串，在 MySQL中，这个函数支持多个参数，但在 Oracle 中只支持两个参数。由于不同数据库之间的语法差异，如果更换数据库，有些 SOL 语句可能就需要重写。针对这种情况，可以使用 bind 标签来避免由于更换数据库带来的一些麻烦。将上面的方法改为 bind方式后，代码如下。
+
+```xml
+<if test="userName != null and userName != ''">
+          <bind name="userNameLike" value="'%' + userName + '%'"/>
+          and user_name like #{userNameLike}
+</if>                                                                          
+```
+
+bind 标签的两个属性都是必选项，name 为绑定到上下文的变量名，value 为OGNL表达式。创建一个 bind 标签的变量后，就可以在下面直接使用，使用 bind 拼接字符串不仅可以避免因更换数据库而修改 SOL，也能预防 SOL 注入。大家可以根据需求，灵活使用 OGNI表达式来实现功能.
+
+
+
+
+
+
+
+
+
+
+
+
+
+## Mybatis Generator 配置相关
+
+
+
 
 
 
