@@ -148,6 +148,31 @@ bind 标签的两个属性都是必选项，name 为绑定到上下文的变量�
 
 
 
+# --------------------------------------------------
+
+# Mybatus Plus
+
+## 1.INSERT
+
+
+
+## 2.SELECT
+
+### （1）Mybatis Plus 特有关联 Mybatis 的动态 SQL 的写法
+
+```xml
+<!-- Page<YourObject> listByCondition(Wrapper ew, Page page); -->
+
+
+<select id="listByCondition" resultType="YourObject">
+    SELECT
+    <include refid="Base_Column_List"/>
+    FROM table_name ${ew.customSqlSegment}
+</select>
+```
+
+
+
 
 
 
