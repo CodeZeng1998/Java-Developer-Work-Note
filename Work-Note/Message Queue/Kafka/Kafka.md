@@ -52,9 +52,42 @@ Kafka最 新定义 ： Kafka是 一个开源的分布式事件流平台 （Event
 # 消费某个 tiopic 最新的一条数据
 ./kafka-console-consumer.sh --topic <topic_name> --bootstrap-server <bootstrap_server> --max-messages 1
 
+
+# 创建 topic 3是分区数量，1是复制因子（副本数）。
+./kafka-topics.sh --create --zookeeper localhost:2181 --topic topicName --partitions 3 --replication-factor 1
+
 ```
 
 
+
+## topic
+
+```shell
+# 查看主题详细信息
+./kafka-topics.sh --describe --zookeeper localhost:2181 --topic <Topic Name>
+
+# 创建主题
+./kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor <副本数量> --partitions <分区数量> --topic <Topic Name>
+./kafka-topics.sh --bootstrap-server localhost:9092 --create --replication-factor <副本数量> --partitions <分区数量> --topic <Topic Name>
+
+# 删除 Topic
+./kafka-topics.sh --zookeeper localhost:2181 --delete --topic <Topic Name>
+```
+
+
+
+
+
+## offset
+
+```shell
+# 将某个 groupid 指定 topic 的 offset 跳转到最新的 offset
+./kafka-consumer-groups.sh --bootstrap-server <bootstrap-server> --group <groupId> --reset-offsets --topic <topicName> --to-latest --execute
+
+# 将某个 groupid 指定 topic 的 offset 跳转到指定时间 
+#日期时间应该使用 ISO 8601 格式，即 yyyy-MM-ddTHH:mm:ss.xxx，其中 T 是日期和时间之间的分隔符
+./kafka-consumer-groups.sh --bootstrap-server <bootstrap-server> --group <groupId> --reset-offsets --topic <topicName> --to-datetime desired-timestamp --execute
+```
 
 
 
@@ -322,3 +355,10 @@ future.addCallback(new ListenableFutureCallback<SendResult<String, String>>() {
     @KafkaListener(topics = "topic", containerFactory = "kafkaTwoListenerContainerFactory")
     public void onMessage(ConsumerRecord<String, String> record, Acknowledgment acknowledgment) {}
 ```
+
+
+
+
+
+
+
