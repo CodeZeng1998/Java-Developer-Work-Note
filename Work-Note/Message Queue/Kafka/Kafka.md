@@ -91,6 +91,19 @@ Kafka最 新定义 ： Kafka是 一个开源的分布式事件流平台 （Event
 
 
 
+## groupid
+
+```shell
+# 查看指定 groupId 的 Kafka 消费者组的信息
+# GROUP：消费者组 ID、TOPIC：消费者组订阅的主题、PARTITION：显示每个主题中消费者订阅的特定分区
+# CURRENT-OFFSET：显示每个消费者在每个分区中最后消费的消息偏移量
+# LOG-END-OFFSET：显示分区的当前末端偏移量 (即下一个要生成的的消息的偏移量)
+# LAG：此处计算 CURRENT-OFFSET 和 LOG-END-OFFSET 之间的差值，指示消费者落后于分区中最新消息的程度
+# CONSUMER-ID：每个消费者实例提供唯一的标识符、HOST：运行消费者的机器的主机名或 IP 地址
+# CLIENT-ID:使用消费者的应用程序提供标识符
+./kafka-consumer-groups.sh --bootstrap-server <localhost:9092> --describe --group <groupId>
+```
+
 
 
 
