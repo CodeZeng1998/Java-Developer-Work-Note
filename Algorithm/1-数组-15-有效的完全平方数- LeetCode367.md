@@ -157,10 +157,3 @@ Explanation: We return false because 3.742 * 3.742 = 14 and 3.742 is not an inte
 **CSDN: CodeZeng1998**
 
 **其他平台：CodeZeng1998**、**好锅**
-
-
-
-![公众号：CodeZeng1998](./CodeZeng1998.png)
-
-![公众号：好锅](.\好锅.png)
-
