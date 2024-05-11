@@ -1,51 +1,62 @@
 # 1-数组-13-在排序数组中查找元素的第一个和最后一个位置-LeetCode34
 
-
-
-更多内容欢迎关注我的Github（持续更新中，欢迎Star✨）[CodeZeng1998/Java-Developer-Work-Note](https://github.com/CodeZeng1998/Java-Developer-Work-Note)
-
-参考：代码随想录（做题顺序很重要，后续算法代码优先以这个题目顺序为主）
+>  参考：代码随想录
+>  LeetCode：题目序号34
 
 
 
-[34. Find First and Last Position of Element in Sorted Array](https://leetcode.cn/problems/find-first-and-last-position-of-element-in-sorted-array/)
+**更多内容欢迎关注我（持续更新中，欢迎Star✨）**
 
-Given an array of integers `nums` sorted in non-decreasing order, find the starting and ending position of a given `target` value.
+**Github：[CodeZeng1998/Java-Developer-Work-Note](https://github.com/CodeZeng1998/Java-Developer-Work-Note)**
 
-If `target` is not found in the array, return `[-1, -1]`.
+**技术公众号：CodeZeng1998**（纯纯技术文）
 
-You must write an algorithm with `O(log n)` runtime complexity.
+**生活公众号：好锅**（Life is more than code）
 
- 
+**CSDN: CodeZeng1998**
 
-**Example 1:**
+**其他平台：CodeZeng1998**、**好锅**
 
-```
-Input: nums = [5,7,7,8,8,10], target = 8
-Output: [3,4]
-```
 
-**Example 2:**
 
-```
-Input: nums = [5,7,7,8,8,10], target = 6
-Output: [-1,-1]
-```
+[34. 在排序数组中查找元素的第一个和最后一个位置](https://leetcode.cn/problems/find-first-and-last-position-of-element-in-sorted-array/)
 
-**Example 3:**
+给你一个按照非递减顺序排列的整数数组 `nums`，和一个目标值 `target`。请你找出给定目标值在数组中的开始位置和结束位置。
 
-```
-Input: nums = [], target = 0
-Output: [-1,-1]
-```
+如果数组中不存在目标值 `target`，返回 `[-1, -1]`。
+
+你必须设计并实现时间复杂度为 `O(log n)` 的算法解决此问题。
 
  
 
-**Constraints:**
+**示例 1：**
+
+```
+输入：nums = [5,7,7,8,8,10], target = 8
+输出：[3,4]
+```
+
+**示例 2：**
+
+```
+输入：nums = [5,7,7,8,8,10], target = 6
+输出：[-1,-1]
+```
+
+**示例 3：**
+
+```
+输入：nums = [], target = 0
+输出：[-1,-1]
+```
+
+ 
+
+**提示：**
 
 - `0 <= nums.length <= 105`
 - `-109 <= nums[i] <= 109`
-- `nums` is a non-decreasing array.
+- `nums` 是一个非递减数组
 - `-109 <= target <= 109`
 
 
@@ -62,6 +73,7 @@ Output: [-1,-1]
      * @param nums 升序排序的数据
      * @param target 目标值
      * @return 返回目标值出现的第一个和最后一个位置，不存在则返回 [-1, -1]
+     * @Author: CodeZeng1998
      */
     public int[] findFirstAndLastPositionOfElementInSortedArray(int[] nums, int target) {
         int firstPosition = findFirstPositionOfElementInSortedArray(nums, target);
@@ -170,57 +182,59 @@ ChatGPT 解释如下：
 
 
 
+[34. Find First and Last Position of Element in Sorted Array](https://leetcode.cn/problems/find-first-and-last-position-of-element-in-sorted-array/)
 
+Given an array of integers `nums` sorted in non-decreasing order, find the starting and ending position of a given `target` value.
 
+If `target` is not found in the array, return `[-1, -1]`.
 
-
-
-
-[34. 在排序数组中查找元素的第一个和最后一个位置](https://leetcode.cn/problems/find-first-and-last-position-of-element-in-sorted-array/)
-
-给你一个按照非递减顺序排列的整数数组 `nums`，和一个目标值 `target`。请你找出给定目标值在数组中的开始位置和结束位置。
-
-如果数组中不存在目标值 `target`，返回 `[-1, -1]`。
-
-你必须设计并实现时间复杂度为 `O(log n)` 的算法解决此问题。
+You must write an algorithm with `O(log n)` runtime complexity.
 
  
 
-**示例 1：**
+**Example 1:**
 
 ```
-输入：nums = [5,7,7,8,8,10], target = 8
-输出：[3,4]
+Input: nums = [5,7,7,8,8,10], target = 8
+Output: [3,4]
 ```
 
-**示例 2：**
+**Example 2:**
 
 ```
-输入：nums = [5,7,7,8,8,10], target = 6
-输出：[-1,-1]
+Input: nums = [5,7,7,8,8,10], target = 6
+Output: [-1,-1]
 ```
 
-**示例 3：**
+**Example 3:**
 
 ```
-输入：nums = [], target = 0
-输出：[-1,-1]
+Input: nums = [], target = 0
+Output: [-1,-1]
 ```
 
  
 
-**提示：**
+**Constraints:**
 
 - `0 <= nums.length <= 105`
 - `-109 <= nums[i] <= 109`
-- `nums` 是一个非递减数组
+- `nums` is a non-decreasing array.
 - `-109 <= target <= 109`
 
 
 
+**更多内容欢迎关注我（持续更新中，欢迎Star✨）**
 
+**Github：[CodeZeng1998/Java-Developer-Work-Note](https://github.com/CodeZeng1998/Java-Developer-Work-Note)**
 
+**技术公众号：CodeZeng1998**（纯纯技术文）
 
+**生活公众号：好锅**（Life is more than code）
+
+**CSDN: CodeZeng1998**
+
+**其他平台：CodeZeng1998**、**好锅**
 
 
 

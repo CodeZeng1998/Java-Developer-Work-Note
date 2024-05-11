@@ -1,40 +1,57 @@
 # [1-数组-14-x 的平方根- LeetCode69](https://leetcode.cn/problems/sqrtx/)
 
-更多内容欢迎关注我的Github（持续更新中，欢迎Star✨）[CodeZeng1998/Java-Developer-Work-Note](https://github.com/CodeZeng1998/Java-Developer-Work-Note)
+
+
+> LeetCode：题目序号69
 
 
 
-[69. Sqrt(x)](https://leetcode.cn/problems/sqrtx/)
+**更多内容欢迎关注我（持续更新中，欢迎Star✨）**
 
-Given a non-negative integer `x`, return *the square root of* `x` *rounded down to the nearest integer*. The returned integer should be **non-negative** as well.
+**Github：[CodeZeng1998/Java-Developer-Work-Note](https://github.com/CodeZeng1998/Java-Developer-Work-Note)**
 
-You **must not use** any built-in exponent function or operator.
+**技术公众号：CodeZeng1998**（纯纯技术文）
 
-- For example, do not use `pow(x, 0.5)` in c++ or `x ** 0.5` in python.
+**生活公众号：好锅**（Life is more than code）
+
+**CSDN: CodeZeng1998**
+
+**其他平台：CodeZeng1998**、**好锅**
+
+
+
+
+
+[69. x 的平方根 ](https://leetcode.cn/problems/sqrtx/)
+
+给你一个非负整数 `x` ，计算并返回 `x` 的 **算术平方根** 。
+
+由于返回类型是整数，结果只保留 **整数部分** ，小数部分将被 **舍去 。**
+
+**注意：**不允许使用任何内置指数函数和算符，例如 `pow(x, 0.5)` 或者 `x ** 0.5` 。
 
  
 
-**Example 1:**
+**示例 1：**
 
 ```
-Input: x = 4
-Output: 2
-Explanation: The square root of 4 is 2, so we return 2.
+输入：x = 4
+输出：2
 ```
 
-**Example 2:**
+**示例 2：**
 
 ```
-Input: x = 8
-Output: 2
-Explanation: The square root of 8 is 2.82842..., and since we round it down to the nearest integer, 2 is returned.
+Input: x = 8 Output: 2 Explanation: The arithmetic square root of 8 is 2.82842..., since the return type is an integer, the decimal part will be rounded off.
 ```
 
  
 
-**Constraints:**
+**提示：**
 
 - `0 <= x <= 231 - 1`
+
+
 
 
 
@@ -44,6 +61,7 @@ Explanation: The square root of 8 is 2.82842..., and since we round it down to t
      *
      * @param x 待获取的值
      * @return 返回符合条件的值
+     * @Author: CodeZeng1998
      */
     public int sqrt(int x) {
         // 一个整数的平方根肯定不会超过它自己的一半，但是 0 和 1 除外，需特殊处理
@@ -92,33 +110,50 @@ ChatGPT:
 
 
 
+[69. Sqrt(x)](https://leetcode.cn/problems/sqrtx/)
 
+Given a non-negative integer `x`, return *the square root of* `x` *rounded down to the nearest integer*. The returned integer should be **non-negative** as well.
 
-[69. x 的平方根 ](https://leetcode.cn/problems/sqrtx/)
+You **must not use** any built-in exponent function or operator.
 
-给你一个非负整数 `x` ，计算并返回 `x` 的 **算术平方根** 。
-
-由于返回类型是整数，结果只保留 **整数部分** ，小数部分将被 **舍去 。**
-
-**注意：**不允许使用任何内置指数函数和算符，例如 `pow(x, 0.5)` 或者 `x ** 0.5` 。
+- For example, do not use `pow(x, 0.5)` in c++ or `x ** 0.5` in python.
 
  
 
-**示例 1：**
+**Example 1:**
 
 ```
-输入：x = 4
-输出：2
+Input: x = 4
+Output: 2
+Explanation: The square root of 4 is 2, so we return 2.
 ```
 
-**示例 2：**
+**Example 2:**
 
 ```
-Input: x = 8 Output: 2 Explanation: The arithmetic square root of 8 is 2.82842..., since the return type is an integer, the decimal part will be rounded off.
+Input: x = 8
+Output: 2
+Explanation: The square root of 8 is 2.82842..., and since we round it down to the nearest integer, 2 is returned.
 ```
 
  
 
-**提示：**
+**Constraints:**
 
 - `0 <= x <= 231 - 1`
+
+
+
+
+
+**更多内容欢迎关注我（持续更新中，欢迎Star✨）**
+
+**Github：[CodeZeng1998/Java-Developer-Work-Note](https://github.com/CodeZeng1998/Java-Developer-Work-Note)**
+
+**技术公众号：CodeZeng1998**（纯纯技术文）
+
+**生活公众号：好锅**（Life is more than code）
+
+**CSDN: CodeZeng1998**
+
+**其他平台：CodeZeng1998**、**好锅**
