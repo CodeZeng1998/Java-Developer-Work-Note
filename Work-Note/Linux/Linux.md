@@ -8,7 +8,7 @@
 
 
 
-## 1.防火墙-相关命令
+# 1.防火墙-相关命令
 
 ```shell
 # 查看防火墙状态
@@ -57,7 +57,7 @@ systemctl disable firewalld
 
 
 
-## 2.Linux信息
+# 2.Linux信息
 
 ```shell
 # 内存
@@ -72,56 +72,81 @@ lscpu
 
 
 
-## 3.Nginx相关
+# 3.文件相关
+
+## （1）tar
 
 ```shell
-# 1.启动Nginx
-# /usr/local/nginx/sbin/nginx -c /usr/local/nginx/conf/nginx.conf
-nginx安装目录地址 -c nginx配置文件地址
+# 解压文件 tar -zxcf archive.tar.gz
+tar -zxcf 解压文件名.tar.gz
+
+# 压缩文件 tar -zcvf my_archive.tar.gz my_directory
+tar -zcvf 压缩文件名.tar.gz 文件或目录路径
+```
 
 
-# 2.停止Nginx
 
-# （1）从容停止
-# 查看进程号
-ps -ef|grep nginx
-# 杀死进程
-kill -quit 进程号
+## （2）xz
 
-# （2）快速停止
-ps -ef|grep nginx
-# 杀死进程
-kill -term 进程号/ kill -int 进程号
+```shell
+# 压缩tar.xz文件（tar.xz文件：只要先 tar cvf xxx.tar xxx/ 这样创建xxx.tar文件先，然后使用 xz -z xxx.tar 来将 xxx.tar压缩成为 xxx.tar.xz）
+tar -zcvf 压缩文件名.tar.gz 文件或目录路径
+xz -z 压缩文件名.tar
 
-# （3）强制停止
-pkill -9 nginx
+# 解压tar.xz文件（解压tar.xz文件：先 xz -d xxx.tar.xz 将 xxx.tar.xz解压成 xxx.tar 然后，再用 tar xvf xxx.tar来解包）
+xz -d 解压文件名.tar.xz
+tar -zxcf 解压文件名.tar
+```
 
 
-# 3.重启
-# 3.1验证nginx配置文件是否正确
-# （1）方法一：进入nginx安装目录sbin下，输入命令./nginx -t
-./nginx -t
-# （2）方法二：在启动命令-c前加-t
-/usr/local/nginx/sbin/nginx -t -c /usr/local/nginx/conf/nginx.conf
 
-# 3.2重启nginx服务
-# （1）方法一：进入nginx安装目录sbin下，输入命令./nginx -s reload 即可
-./nginx -s reload
-# （2）方法二：查找当前nginx进程号，然后输入命令：kill -HUP 进程号 实现重启nginx服务
-ps -ef|grep nginx
-kill -HUP 进程号
+## （3）zip
 
-# 查看nginx版本
-nginx -version
-nginx -v
+```shell
+# 解压文件
+unzip 压缩文件名.zip
+# 解压文件到指定目录
+unzip 压缩文件名.zip -d 目标目录路径
 
-# 快速关机
-nginx -s stop
+# 压缩文件（将文件1 文件2 文件3 压缩到zip中）
+zip 压缩文件名.zip 文件1 文件2 文件3 ...
+# 压缩文件（将整个目录及其所有子目录和文件压缩到zip中）
+zip -r 压缩文件名.zip 目录路径
+```
 
-#正常关机
-nginx -s quit
-#重新打开日志文件
-nginx -s reopen
+
+
+   
+
+
+
+# 4.日期时间
+
+## （1）修改系统时间
+
+```shell
+# 查看当前时区
+date -R
+
+# 修改设置Linux服务器时区 Asia -> China -> Beijing Time
+tzselect
+
+# 复制相应的时区文件，替换系统时区文件；或者创建链接文件 
+cp /usr/share/zoneinfo/$主时区/$次时区 /etc/localtime
+
+# 在设置中国时区使用亚洲/上海（+8）
+cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
+
+
+# 查看时间和日期
+date
+
+# 将系统日期设定成2023年07月12日的命令   月/日/年
+date -s 07/12/2023
+# 将系统时间设定成下午5点55分55秒的命令 时:分:秒
+date -s 17:55:55
+# 将当前时间和日期写入BIOS，避免重启后失效
+hwclock -w
 ```
 
 
@@ -132,21 +157,39 @@ nginx -s reopen
 
 
 
+# 5. 查找相关
 
-## 6.Maven
+## （1）查找文件
 
 ```shell
-# 手动安装 jar 包
-mvn install:install-file -Dfile=jar包的位置 -DgroupId=你的groupId -DartifactId=你的artifactId -Dversion=你的版本号version -Dpackaging=jar
-
-# 查看版本号
-mvn --version
-
-
-
+# 查找 filePath 下的名字包含 searchName 的文件
+find <filePath> -name "*<searchName>*"
 ```
 
 
+
+## （2）查找内存
+
+```shell
+# 找出 Linux 系统上内存占用最多的前 5 个进程
+ps aux --sort -rss | head -5
+```
+
+
+
+
+
+# 6. 统相关关
+
+## （1）统计数量
+
+```shell
+# 统计当前目录下包含XXX文件的数量 
+# wc -l 命令统计找到的文件数
+find . -name "*XXX*" | wc -l
+find <filePath> -name "*<searchName>*" | wc -l
+
+```
 
 
 
