@@ -85,6 +85,7 @@ for (int i = 0; i < len; i++) {
      * @param nums 待处理的数组
      * @param val 目标值
      * @return 返回处理后的数组的长度
+     * @author CodeZeng1998
      */
     public int removeElement(int[] nums, int val) {
         int size = nums.length;
@@ -127,6 +128,7 @@ ChatGPT:
      * @param nums 待处理的数组
      * @param val 目标值
      * @return 返回处理后的数组的长度
+     * @author CodeZeng1998
      */
     public int removeElement(int[] nums, int val) {
         int slowIndex = 0;

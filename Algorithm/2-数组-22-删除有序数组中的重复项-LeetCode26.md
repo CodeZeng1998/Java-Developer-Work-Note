@@ -83,6 +83,7 @@ for (int i = 0; i < k; i++) {
      *
      * @param nums 待处理的数组
      * @return 返回处理后的数组的长度
+     * @author CodeZeng1998
      */
     public int removeDuplicates(int[] nums) {
         if (nums.length == 0) {

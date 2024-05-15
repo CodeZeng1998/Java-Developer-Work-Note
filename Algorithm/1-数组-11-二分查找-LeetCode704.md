@@ -125,6 +125,7 @@ ChatGPT：
      * @param nums 升序排序的数组
      * @param target 目标值
      * @return 数组索引，如果未找到则返回 -1
+     * @author CodeZeng1998
      */
     public int binarySearch(int[] nums, int target) {
         int left = 0;

@@ -96,6 +96,7 @@
      * @param nums 升序排序的数据
      * @param target 目标值
      * @return 找到元素第一次出现的位置
+     * @author CodeZeng1998
      */
     public int findFirstPositionOfElementInSortedArray(int[] nums, int target) {
         int firstPosition = -2;
@@ -123,6 +124,7 @@
      * @param nums 升序排序的数据
      * @param target 目标值
      * @return 找到元素最后一次出现的位置
+     * @author CodeZeng1998
      */
     public int findLastPositionOfElementInSortedArray(int[] nums, int target) {
         int lastPosition = -2;

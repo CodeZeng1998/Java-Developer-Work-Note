@@ -130,6 +130,7 @@ ChatGPT：
      * @param nums 升序排序的数据
      * @param target 目标值（目标值不存在与数组中）
      * @return 返回目标值插入的数组索引
+     * @author CodeZeng1998
      */
     public int searchInsertPosition(int[] nums, int target) {
 
