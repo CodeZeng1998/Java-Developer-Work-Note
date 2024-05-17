@@ -584,17 +584,43 @@ sudo rm /var/lib/dpkg/lock
 
 ## 6.4 Docker  的运行机制
 
+ Docker的引擎Docker Engine（Docker引擎）是Docker的核心部分，使用的是客户端-服务器（C/S）架构模式。
+
+Docker Engine 中包含了三个核心组件（docker CLI、REST API 和docker daemon），这三个组件的具体说明如下。
+
+* ·docker CLI（command line interface）：表示Docker命令行接口，开发者可以在命令行中使用Docker相关指令与Docker守护进程进行交互，从而管理诸如image（镜像）、container （容器）、network（网络）和data volumes（数据卷）等实体。
+
+* ·REST API：表示应用程序API接口，开发者通过该API接口可以与Docker的守护进程进行交互，从而指示后台进行相关操作。
+
+* ·docker daemon：表示Docker的服务端组件，它是Docker架构中运行在后台的一个守护进程，可以接收并处理来自命令行接口及API接口的指令，然后进行相应的后台操作。
+
+对于开发者而言，既可以使用编写好的脚本文件通过REST API来实现与Docker进程交互，也可以直接使用Docker相关指令，通过命令行接口来与Docker进程交互，而其他一些Docker应用则是通过底层的API和CLI进行交互的。
 
 
 
+Docker架构主要包括Client、DOCKER_HOST和Register三部分，关于这三部分的具体说明如下。
+
+* **Client（客户端）**：Client即Docker客户端，也就是上一小节Docker Engine中介绍的docker CLI。开发者通过这个客户端使用Docker的相关指令与Docker守护进程进行交互，从而进行Docker镜像的创建、拉取和运行等操作。
+* .**DOCKER_HOST（Docker主机）**：DOCKER_HOST即Docker内部引擎运行的主机，主要指Docker daemon（Docker守护进程）。可以通过Docker守护进程与客户端还有Docker的镜像仓库Registry进行交互，从而管理Images（镜像）和Containers（容器）等。
+* Registry（注册中心）：Registry即Docker注册中心，实质就是Docker镜像仓库，默认使用的是Docker官方远程注册中心Docker Hub，也可以使用开发者搭建的本地仓库。Registry中包含了大量的镜像，这些镜像可以是官网基础镜像，也可以是其他开发者上传的镜像。
 
 
+
+我们在实际使用 Docker 时，除了会涉及图中的 3 个主要部分外，还会涉及很多 Docker Objects（Docker对象），例如Images（镜像）、Containers（容器）、Networks（网络）、Volumes （数据卷）、Plugins（插件）等。其中常用的两个对象Image和Containers的说明如下。
+
+* ·Images（镜像）Docker镜像就是一个只读的模板，包含了一些创建Docker容器的操作指令。通常情况下，一个Docker镜像是基于另一个基础镜像创建的，并且新创建的镜像会额外包含一些功能配置。例如：开发者可以依赖于一个 Ubuntu 的基础镜像创建一个新镜像，并可以在新镜像中安装Apache等软件或其他应用程序。
+* ·Containers（容器）Docker 容器属于镜像的一个可运行实例（镜像与容器的关系其实与 Java 中的类与对象相似），开发者可以通过API接口或者CLI命令行接口来创建、运行、停止、移动、删除一个容器，也可以将一个容器连接到一个或多个网络中，将数据存储与容器进行关联。
 
 
 
 ## 6.5 Docker 的底层技术
 
+Docker使用了一系列的底层技术来充分发挥其技术特色，这些底层技术包括有Namespaces、Control groups、Union file systems和Container format等，其具体含义如下。
 
+* Namespaces（名称空间）：Docker使用名称空间来为容器提供隔离的工作空间。当一个容器运行时，Docker就会为该容器创建一系列的名称空间，并为名称空间提供一层隔离。每一个容器都运行在相对隔离的环境下，对其他名称空间是相对受限的。
+* Control groups（控制组）：基于Linux系统的Docker引擎也依赖于另一项叫做Control groups（cgroups，控制组）的技术。控制组可以对程序进行资源限定，并允许Docker引擎在容器间进行硬件资源共享以及随时进行限制和约束，例如，开发者可以限制某特定容器的可用内存。
+* Union file systems（联合文件系统）：联合文件系统（UnionFS）是一种分层、轻量级并且高性能的文件系统，它支持将文件系统的修改作为一次提交来一层层地叠加，同时可以将不同目录挂载到同一个虚拟文件系统下。不同Docker 容器可以共享一些基础的文件系统层，与自己独有的改动层一起使用，可以大大地提高存储效率。Docker目前支持的联合文件系统包括AUFS、btrfs、 vfs 和 DeviceMapper。
+* Container format（容器格式）：Docker 引擎将名称空间、控制组和联合文件系统组合成一个叫做容器格式的整体。当前默认的容器格式是libcontainer，未来Docker可能会通过与其他技术（如BSD Jails或者Solaris Zones）的集成使用来开发其他的容器格式。
 
 
 
@@ -602,23 +628,298 @@ sudo rm /var/lib/dpkg/lock
 
 ## 7.1 Docker 入门程序
 
+```shell
+# 查看镜像
+docker images
 
+# 创建并启动容器
+# -d参数表示在后台运行容器，容器创建成功后会自动返回一个64位的容器ID；-p参数将容器暴露的80端口映射到宿主机的5000端口。
+docker run -d -p 5000:80 hellodocker
+
+# 查看运行容器
+docker ps
+
+# 停止容器 “653347ecc6df”代表的是生成的容器ID docker ps 可以查看对应容器的id
+docker stop 653347ecc6df
+```
+
+
+
+多学一招　：**配置Docker加速器**
+
+使用 Docker 的时候，需要经常从官网获取镜像，但是由于网络或网速等原因，拉取官网镜像的过程可能会非常缓慢，从而严重影响Docker 的使用体验，因此我们可以通过国内一些网站提供的加速器工具来解决这个难题。这些加速器通过智能路由和缓存机制，极大地提升了国内网络访问DockerHub的速度。Linux系统中，配置Docker加速器的具体指令如下。
+
+```shell
+curl -sSL https://get.daocloud.io/daotools/set_mirror.sh |sh -s http://27e6d45b.m.daocloud.io
+```
+
+该指令可以将Registry远程注册中心的--registry-mirror配置信息加入到Docker本地配置文件/etc/docker/daemon.json 中。
+
+当配置好Docker加速器后，需要根据提示信息重启Docker服务才可生效。
 
 
 
 ## 7.2 Dockerfile 介绍
 
+Docker 创建镜像时使用了一个 Dockerfile文件，Docker 就是通过读取 Dockerfile文件中一行行的指令构建Docker 镜像的.
 
+ **Dockerfile基本结构**
+
+Dockerfile是一个普通的文本文件，里面包含了许多可以在命令行接口上执行的用来构建镜像的相关指令，我们通过docker build指令就可以读取Dockerfile文件中的指令并执行自动化镜像构建。
+
+一般情况下，Dockerfile文件可分为四个部分：基础镜像信息、维护者信息、镜像操作指令和容器启动时的执行指令。
+
+```
+1　#定义基础镜像信息
+2　FROM ubuntu
+3　# 定义该镜像的维护者信息
+4　MAINTAINER docker_user docker_user@email.com
+5　# 一些镜像操作指令
+6　RUN echo "deb http://archive.ubuntu.com/ubuntu/raring main universe" \
+7　　　　 >> /etc/apt/sources.list
+8 RUN apt-get update && apt-get install -y nginx
+9 RUN echo "\ndaemon off;" >> /etc/nginx/nginx.conf
+10 # 当容器启动时要执行的指令11 CMD /usr/sbin/nginx
+```
+
+* #：注释
+* \ : 反斜杠“\”进行指令换行，这样一条较长的指令就会被分为多行显示
+
+小提示
+
+Dockerfile 文件是 Docker 构建镜像的脚本文件，名字可以自定义，但在构建镜像时默认使用的是Dockerfile 文件。当定义为其他名称时，在进行镜像构建时，必须指定该脚本文件的位置和名称。因此，通常情况下，推荐直接使用默认的Dockerfile进行命名。
+
+
+
+**Dockerfile常用指令**
+
+在编写Dockerfile脚本文件时，开发者根据实际需要会使用到各种指令，如FROM、CMD、ADD等
+
+12 
+
+| 指令       | 说明                                                         |
+| ---------- | ------------------------------------------------------------ |
+| FROM       | 指定基础镜像                                                 |
+| MAINTAINER | 指定镜像维护者信息                                           |
+| RUN        | 用于执行指定的脚本命令                                       |
+| CMD        | 指定启动容器时执行的命令                                     |
+| EXPOSE     | 指定容器暴露的端口                                           |
+| ENV        | 指定环境变量                                                 |
+| ADD        | 将文件从宿主机复制到容器指定位置,同时对压缩文件有自动解压功能 |
+| COPY       | 将文件从宿舍机复制到容器指定位置                             |
+| ENTRYPOINT | 设置容器启动时需要运行的命令                                 |
+| WORKDIR    | 为后续的如 RUN、CMD、ENTRYPOINT、COPY、ADD指定工作目录       |
+
+
+
+**FROM**指令使用的语法格式如下：
+
+```
+FROM <image>
+FROM <image>:<tag>
+```
+
+在使用FROM指令时，需要注意以下几点。·一个有效的Dockerfile文件必须以FROM指令开头（除了ARG指令）。
+
+* ·为了创建多重镜像或者互相依赖的镜像，在同一个 Dockerfile 文件中可能会出现多个FROM指令。
+* ·<tag>参数是可选的，其作用主要是进一步对镜像区分，例如版本、型号等。如果没有使用该参数，则默认是latest；如果设置的<tag>参数不存在，则构建镜像也会失败。
+
+
+
+**MAINTAINER**
+
+MAINTAINER 指令用于指定当前构建的镜像维护者信息，该指令没有具体的格式要求，通常建议使用用户名和邮箱进行标识，
+
+```
+MAINTAINER "shitou"<shitou@163.com>
+```
+
+
+
+**RUN**
+
+RUN指令用于执行指定的脚本命令，有两种格式，其语法格式如下。
+
+```
+RUN <command>
+RUN ["executable", "param1", "param2"]
+```
+
+前者将在 shell 终端中运行命令，即 /bin/sh -c；后者则使用 exec 执行。指定使用其他终端可以通过第二种方式实现，例如 RUN ["/bin/bash", "-c", "echo hello"]。
+
+其中每条 RUN 指令将在当前镜像基础上执行指定命令，并提交为新的镜像。如果要执行多条RUN指令，通常会将多条RUN指令合成一条，并使用斜杠“\” 来换行，这样将减小所构建的镜像的体积。
+
+
+
+**CMD**
+
+CMD指令用于指定启动容器时执行的命令，该指令有三种格式，其语法格式如下。
+
+```shell
+#使用 exec 执行，也是推荐方式；
+CMD ["executable","param1","param2"]
+
+#在 /bin/sh 中执行，提供给需要交互的应用；
+CMD command param1 param2　
+
+#提供给 ENTRYPOINT 的默认参数；
+CMD ["param1","param2"]
+```
+
+需要注意的是，在使用CMD指令时，每个 Dockerfile 只能有一条CMD 指令，如果有多条CMD指令，则只有最后一条生效。如果用户启动容器时指定了运行的指令，则会覆盖掉CMD指定的指令。
+
+
+
+**EXPOSE**
+
+EXPOSE指令用于声明容器内部暴露的端口号，供容器访问连接使用，其语法格式如下。
+
+```
+EXPOSE <port> [<port>...]
+```
+
+
+
+**ENV**
+
+ENV 指令用于为下文设定一个环境变量，该变量值在后续指令或内联文件中都可以使用。ENV指令有两种语法格式，具体如下。
+
+```
+ENV <key> <value>
+ENV <key>=<value> <key>=<value> ..
+```
+
+.在上述两种语法格式中，第一种格式为一个属性设置唯一的属性值，<key>属性第一个空格之后的所有字符串（包括空格、引号）都将被视为该属性的值；第二种格式允许同时为多个属性赋值，而这种方式里面的引号、反斜杠等将被解析掉。
+
+
+
+**ADD**
+
+ADD指令用于复制指定的 src资源文件到容器中的 dest目录下，复制的资源可以是文件、目录以及远程URLs资源。其语法格式如下。
+
+```
+ADD <src>...<dest>
+```
+
+在使用ADD指令时，复制的src资源文件必须是当前上下文目录或其子目录，而复制的内容实际上是该目录下的所有内容，其中包括文件系统元数据，而目录本身不会被复制。当 dest目录不存在时，会在复制文件时自动创建。需要注意的是，当使用ADD指令复制的文件是一个压缩包时，ADD指令会在复制好该文件后，自动进行解压。
+
+在使用ADD指令时，复制的src资源文件路径允许使用通配符，而dest目标目录可以使用绝对路径，也可以使用预先用WORKDIR指令定义的相对路径。
+
+
+
+**COPY**
+
+COPY指令的作用与ADD指令类似，都是复制指定的src资源文件到容器中的 dest目录下。区别在于，COPY指令不能复制远程URL路径文件，也不能解压文件，而ADD指令则可以。其语法格式如下。
+
+```shell
+COPY <src>...<dest>
+```
+
+
+
+
+
+**ENTRYPOINT**
+
+ENTRYPOINT 指令是配置容器启动后执行的命令，每个Dockerfile 中只能有一个ENTRYPOINT，当指定多个ENTRYPOINT指令时，只有最后一个生效。该指令有两种语法格式，其语法格式如下。
+
+```shell
+#exec 格式, 推荐的
+ENTRYPOINT ["executable", "param1", "param2"] 
+
+#shell 格式
+ENTRYPOINT command param1 param2 
+```
+
+
+
+**WORKDIR**
+
+WORKDIR 指令用于为后续的指令（如 RUN、CMD、ENTRYPOINT、COPY、ADD）指定工作目录，在同一个Dockerfile文件中可以多次使用WORKDIR指令，其语法格式如下。
+
+```
+WORKDIR /path/to/workdir
+```
+
+
+
+
+
+**dockerignore文件**
+
+* 在实际情况下，Docker在读取应用上下文中的Dockerfile文件进行镜像构建之前，都会先查看当前应用上下文中是否包含一个名为.dockerignore 的文件，如果该文件存在，则 Docker会先将
+
+* .dockerignore文件中声明的文件或目录进行排除，然后再读取Dockerfile进行镜像构建。使用.dockerignore 将有助于在进行文件复制过程中避免向进程中加入过大或者敏感的无用文件和目录。.dockerignore 文件同 Dockerfile 文件一样，也是一个文本文件。二者的主要区别在于.dockerignore中存放的是被排除的文件，而Dockerfile中存放的是需要执行的指令。
+
+
+
+ **.dockerignore**
+
+```
+1 # comment
+2 */temp*
+3 */ */temp*
+4 temp?
+```
+
+* 第1行代码表示注释内容，其余3行代码均为被排除的文件。从被排除文件的编写方式可以看出，.dockerignore文件中可以使用通配符排除匹配路径下的文件。下面针对使用通配符排除匹配路径下的文件进行具体分析。
+* ·*/temp*：排除根目录下任意子目录中所有名字以 temp 开头的文件或目录。例如文件/somedir/temporary.txt会被排除。
+* ·*/ */temp*：排除根目录下任意两级子目录中所有名字以temp开头的文件或目录。例如文件/somedir/subdir/temporary.txt会被排除。
+* ·temp?：排除根目录下名字以temp开头，后面为任意一个字符的文件或目录。例如目录/tempa和/tempb都将被排除。
 
 
 
 ## 7.3 Docker客户端常用命令
+
+**Docker常用操作指令**
+
+
+
+| 指令          | 说明           |
+| ------------- | -------------- |
+| docker images | 列出镜像       |
+| docker search | 搜索镜像       |
+| docker pull   | 拉取镜像       |
+| docker build  | 构建镜像       |
+| docker rmi    | 删除镜像       |
+| docker run    | 创建并启动容器 |
+| docker ps     | 列出容器       |
+| docker exec   | 执行容器       |
+| docker stop   | 停止容器       |
+| docker start  | 启动容器       |
+| docker rm     | 删除容器       |
+
+
+
+**Docker管理指令**
+
+| 管理指令         | 说明                     |
+| ---------------- | ------------------------ |
+| docker container | 用于管理容器             |
+| docker image     | 用于管理镜像             |
+| docker network   | 用于管理 Docker 网络     |
+| docker node      | 用于管理 Swarm 集群节点  |
+| docker plugin    | 用于管理插件             |
+| docker secret    | 用于管理 Docker 机密     |
+| docker service   | 用于管理 Docker 一些服务 |
+| docker stack     | 用于管理 Docker 堆栈     |
+| docker swarm     | 用于管理 Swarm           |
+| docker system    | 用于管理 Docker          |
+| docker volume    | 用于管理数据卷           |
 
 
 
 
 
 ## 7.4 Docker 镜像管理
+
+
+
+
+
+
+
+
 
 
 
