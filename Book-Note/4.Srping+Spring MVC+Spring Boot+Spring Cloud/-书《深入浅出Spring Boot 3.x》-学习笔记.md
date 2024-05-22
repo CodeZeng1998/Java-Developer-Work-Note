@@ -1203,22 +1203,274 @@ public class MyPlugin implements Interceptor {
 
 
 # 第6章 聊聊数据库事务处理
+
+在Spring数据库事务中可以使用编程式事务，也可以使用声明式事务。在大部分的情况下，我们会使用声明式事务，Spring Boot也不推荐我们使用编程式事务，因此本书不再讨论编程式事务。
+
+
+
 ## 6.1 JDBC的数据库事务
+
+```java
+package com.learn.chapter6.service.impl;
+/**** imports ****/
+@Service
+public class JdbcServiceImpl implements JdbcService {
+   @Autowired
+   private DataSource dataSource;
+　
+   @Override
+   public int insertUser(String userName, String note) {
+      Connection conn = null;
+      var result = 0;
+      try {
+         // 获取数据库连接
+         conn = dataSource.getConnection();
+         // 启用事务
+         conn.setAutoCommit(false);
+         // 设置隔离级别
+         conn.setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
+         var sql = "insert into t_user(user_name, note ) values(?, ?)";
+         // 运行SQL语句
+         var ps = conn.prepareStatement(sql);
+         ps.setString(1, userName);
+         ps.setString(2, note);
+         result = ps.executeUpdate();
+         // 提交事务
+         conn.commit();
+      } catch (Exception e) {
+         // 回滚事务
+         if (conn != null) {
+            try {
+               conn.rollback();
+            } catch (SQLException e1) {
+               e1.printStackTrace();
+            }
+         }
+         e.printStackTrace();
+      } finally {
+         // 关闭数据库连接
+         try {
+            if (conn != null && !conn.isClosed()) {
+               conn.close();
+            }
+         } catch (SQLException e) {
+            e.printStackTrace();
+         }
+      }
+      return result;
+   }
+　
+}
+```
+
+
+
 ## 6.2 Spring声明式事务的使用
 
 ### 6.2.1 Spring声明式事务约定
+
+对于事务，需要通过标注告诉Spring在什么地方启用数据库事务功能。声明式事务是使用注解**@Transactional**进行标注的，这个注解可以标注在类或者方法上，当它标注在类上时，表示这个类所有**公共的(public)**非静态的方法都将启用事务功能。
+
+* @Transactional允许配置很多属性，如事务的隔离级别和传播行为。
+* @Transactional还允许配置异常类型，从而确定方法在发生什么异常时回滚事务或者在发生什么异常时不回滚事务等。IoC容器在加载时就会将这些配置信息解析出来，然后把这些信息存到事务定义（TransactionDefinition接口的实现类）里，并且记录哪些类或者方法需要启用事务功能，以及采取什么策略执行事务。在这个过程中，我们需要做的只是给需要事务的类或者方法标注@Transactional和配置其属性而已，并不是很复杂。
+
+
+
+
+
+* 当Spring启用事务时，就会根据事务定义的配置来设置事务。首先是根据传播行为确定事务的策略，有关传播行为，然后是隔离级别、超时时间、只读等内容的设置，这些事务的设置并不需要开发者完成，而是由Spring事务拦截器根据注解@Transactional配置来完成的。
+* Spring通过对注解@Transactional的属性配置来设置数据库事务，接着Spring就会开始调用开发者编写的业务代码。
+* 运行业务代码时可能发生异常，也可能不发生异常。在Spring数据库事务约定流程中，Spring会根据是否发生异常采取不同的策略：如果没有发生异常，Spring事务拦截器就会帮助我们提交事务，这一步也并不需要我们进行干预；如果发生异常，就要判断@Transactional的属性配置在该异常下是否满足回滚配置，如果是就回滚事务，如果不是则继续提交事务，这一步也是由事务拦截器完成的。
+* 无论发生异常与否，Spring都会释放数据库事务资源，这样就可以保证数据源正常可用了，这也是由Spring事务拦截器完成的。
+
+
+
 ### 6.2.2 注解@Transactional的配置项
+
+```java
+package org.springframework.transaction.annotation;
+
+import java.lang.annotation.Documented;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Inherited;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+import org.springframework.core.annotation.AliasFor;
+import org.springframework.transaction.TransactionDefinition;
+
+
+@Target({ElementType.TYPE, ElementType.METHOD})
+@Retention(RetentionPolicy.RUNTIME)
+@Inherited
+@Documented
+public @interface Transactional {
+
+	@AliasFor("transactionManager")
+	String value() default "";
+
+	@AliasFor("value")
+	String transactionManager() default "";
+
+	Propagation propagation() default Propagation.REQUIRED;
+
+	Isolation isolation() default Isolation.DEFAULT;
+
+	int timeout() default TransactionDefinition.TIMEOUT_DEFAULT;
+
+	boolean readOnly() default false;
+
+	Class<? extends Throwable>[] rollbackFor() default {};
+
+	String[] rollbackForClassName() default {};
+
+	Class<? extends Throwable>[] noRollbackFor() default {};
+
+	String[] noRollbackForClassName() default {};
+
+}
+
+```
+
+
+
 ### 6.2.3 Spring事务管理器
+
+```java
+package org.springframework.transaction;
+
+import org.springframework.lang.Nullable;
+
+
+public interface PlatformTransactionManager extends TransactionManager {
+
+	TransactionStatus getTransaction(@Nullable TransactionDefinition definition)
+			throws TransactionException;
+
+	void commit(TransactionStatus status) throws TransactionException;
+
+
+	void rollback(TransactionStatus status) throws TransactionException;
+
+}
+```
+
+Spring做事务管理时，会将这些方法按照约定织入对应的流程中，其中getTransaction()方法的参数是一个事务定义器(TransactionDefinition)，它是依赖于我们配置的@Transactional的配置项生成的，于是通过它就能够设置事务的属性了，而提交和回滚事务则是通过commit()和rollback()方法来执行的。这里需要注意的是事务状态(TransactionStatus)，getTransaction()方法会返回一个事务状态，而commit()方法和rollback()方法的参数是事务状态，在Spring数据库事务机制中，事务状态会影响事务的传播行为的。这里需要注意的是事务状态(TransactionStatus)，getTransaction()方法会返回一个事务状态，而commit()方法和rollback()方法的参数是事务状态，在Spring数据库事务机制中，事务状态会影响事务的传播行为。
+
+在Spring Boot中，添加Maven依赖mybatis-spring-boot-starter之后，会自动创建JdbcTransactionManager对象作为事务管理器。如果依赖spring-boot-starter-data-jpa，则会自动创建JpaTransactionManager对象作为事务管理器。可见事务管理器是Spring Boot自动创建的，我们不需要自己创建它，这就是Spring Boot的主导思想——约定优于配置。
+
 ### 6.2.4 测试数据库事务
+
+
 
 ## 6.3 隔离级别
 
 ### 6.3.1 数据库事务的要素
+
+数据库事务具有以下4个基本要素，也就是著名的**ACID**。
+
+* Atomic（原子性）：事务中包含的操作被看作一个整体的业务单元，这个业务单元中的操作要么全部成功，要么全部失败，不会出现部分失败、部分成功的场景。
+* Consistency（一致性）：事务在完成时，必须使所有数据都保持一致状态，在数据库中进行的所有修改都基于事务，保证了数据的完整性。
+* Isolation（隔离性）：这是我们讨论的核心内容，正如上述，可能多个应用程序线程会同时访问同一数据，这样数据库的同一数据就会在各个不同的事务中被访问，会产生丢失更新。为了压制丢失更新的产生，数据库定义了隔离级别的概念，通过对隔离级别的选择，可以在不同程度上压制丢失更新的发生。因为互联网的应用常常面对高并发的场景，所以隔离性是需要掌握的重点内容。
+* Durability（持久性）：事务结束后，所有数据会固化到一个地方，如保存到磁盘当中，即使断电重启后也可以提供给应用程序访问。
+
+
+
 ### 6.3.2 详解隔离级别
+
+选择隔离级别的时候，既需要考虑数据的一致性，避免脏数据，又要考虑系统性能的问题。
+
+4种隔离级别：
+
+* **未提交读(read uncommitted)**：未提交读是最低的隔离级别，其含义是允许一个事务读取另一个事务没有提交的数据。未提交读是一种危险的隔离级别，所以在实际的开发中应用不广，但是它的优点在于并发能力高，适合那些对数据一致性没有要求而追求高并发的场景，它的最大坏处是可能发生脏读。
+* **读写提交(read committed)**：读写提交隔离级别，是指一个事务只能读取另一个事务已经提交的数据，不能读取未提交的数据。
+  * 会出现**不可重复读**现象：当一个事务读取一行数据，然后另一个事务修改或删除该行时，当第一个事务尝试再次读取相同行时，它看到不同的值或发现该行不再存在。换句话说，第一个事务无法重复相同的读操作并获得相同的结果，因为数据在之间已被另一个事务更改。
+* **可重复读(repeatable read)**：可重复读的目标是克服读写提交中出现的不可重复读的现象，因为在读写提交的时候，可能出现一些值的变化，影响当前事务的运行。
+  * 不会出现**不可重复读**现象
+  * 会出现**幻读**问题：当一个事务根据某个特定的条件执行查询，然后另一个事务插入或删除符合条件的行时，当第一个事务再次执行相同的查询时，它会发现额外的行（幻行），这些行之前不存在，或者一些先前检索到的行消失了。基本上，这就像在两次读取之间遇到“幽灵”行，因为其他事务的操作，这些行会出现或消失。
+  * **不可重复读**针对的是一条纪录，**幻读**针对的是统计值。
+* **串行化(serializable)**：串行化是数据库最高的隔离级别，它会要求所有SQL语句都按照顺序运行，这样就可以克服上述隔离级别出现的各种问题，能够完全保证数据的一致性。
+
+
+
+| 隔离级别 | 脏读 | 不可重复读 | 幻读 |
+| -------- | ---- | ---------- | ---- |
+| 读未提交 | ✅    | ✅          | ✅    |
+| 读已提交 | ✖    | ✅          | ✅    |
+| 可重复读 | ✖    | ✖          | ✅    |
+| 串行化   | ✖    | ✖          | ✖    |
+
+
+
+在企业的生产实践中，选择隔离级别一般会以读写提交为主，它能够防止脏读，但不能避免不可重复读和幻读。为了克服数据不一致和性能问题，程序开发者还设计了乐观锁，甚至使用其他数据库，例如使用Redis作为数据载体。对于隔离级别，不同的数据库的支持也是不一样的。例如，Oracle只能支持读写提交和串行化，而MySQL则能够支持4种，Oracle默认的隔离级别为读写提交，MySQL默认的隔离级别则是可重复读。
+
+
+
 ## 6.4 传播行为
 
 ### 6.4.1 传播行为
+
+在Spring事务机制中，通过枚举类Propagation对数据库定义了7种传播行为。
+
+```java
+package org.springframework.transaction.annotation;
+/**** imports ****/
+public enum Propagation {
+   /**
+    * 需要事务，它是默认传播行为。如果当前存在事务，就沿用当前事务；否则新建一个事务运行该方法
+    */
+   REQUIRED(TransactionDefinition.PROPAGATION_REQUIRED),
+　
+   /**
+    * 支持事务。如果当前存在事务，就沿用当前事务；否则继续采用无事务的方式运行该方法
+    */
+   SUPPORTS(TransactionDefinition.PROPAGATION_SUPPORTS),
+   /**
+    * 必须使用事务。如果当前没有事务，则会抛出异常；如果存在当前事务，则沿用当前事务运行该方法
+    */
+   MANDATORY(TransactionDefinition.PROPAGATION_MANDATORY),
+　
+   /**
+    * 无论当前事务是否存在，都会创建新事务运行该方法，
+    * 这样新事务就可以拥有新的锁和隔离级别等特性，与当前事务相互独立
+    */
+   REQUIRES_NEW(TransactionDefinition.PROPAGATION_REQUIRES_NEW),
+　
+   /**
+    * 不支持事务，当前存在事务时，将挂起事务，运行方法
+    */
+   NOT_SUPPORTED(TransactionDefinition.PROPAGATION_NOT_SUPPORTED),
+　
+   /**
+    * 不支持事务，如果当前存在事务，则抛出异常，否则继续采用无事务的方式运行该方法
+    */
+   NEVER(TransactionDefinition.PROPAGATION_NEVER),
+　
+   /**
+    * 在当前方法调用方法时，如果被调用的方法发生异常，
+    * 只回滚被调用的方法运行过的SQL语句，而不回滚当前方法的事务
+    */
+   NESTED(TransactionDefinition.PROPAGATION_NESTED);
+　
+   private final int value;
+　
+   Propagation(int value) { this.value = value; }
+　
+   public int value() { return this.value; }
+}
+```
+
+
+
 ### 6.4.2 测试传播行为
+
+在大部分的数据库中，一段SQL语句中可以设置一个标志位，运行后面的SQL语句时如果有问题，只回滚到这个标志位的数据状态，而不会让这个标志位之前的SQL语句也回滚。这个标志位在数据库概念中被称为**保存点(save point)**。从加粗日志部分可以看到，Spring生成了nested事务，也可以看到保存点的释放，可见Spring也是使用保存点技术来完成让子事务回滚而不致使当前事务回滚的工作。注意，并不是所有数据库都支持保存点技术，因此Spring内部有这样的规则：当数据库支持保存点技术时，就启用保存点技术；如果不能支持，就新建一个事务来运行代码，即等价于REQUIRES_NEW传播行为。
+
+NESTED传播行为和REQUIRES_NEW传播行为是有区别的：NESTED传播行为会沿用当前事务，以保存点技术为主；REQUIRES_NEW传播行为则创建新的事务，事务的提交和回滚也是独立的，它拥有独立上下文（例如隔离级别和超时时间等），这是在应用中需要注意的地方。
+
+
+
 ### 6.4.3 事务状态
 ## 6.5 Spring数据库事务实战
 
@@ -1226,11 +1478,200 @@ public class MyPlugin implements Interceptor {
 ### 6.5.2 占用事务时间过长
 ### 6.5.3 @Transactional自调用失效问题
 
+Spring数据库事务约定，其实现原理是AOP，而AOP的原理是动态代理，在自调用的过程中，是类自身调用，而不是代理对象调用，那么就不会启用AOP，Spring也就不能把你的代码织入约定的流程中，于是就出现了现在看到的失败场景。为了克服这个问题，我们可以用一个服务类调用另一个服务类，这样就是代理对象的调用，Spring才会将你的代码织入事务流程。
+
+
+
+# 第7章 使用性能利器Redis
+
+Redis是一个开源、使用ANSI C标准编写、遵守BSD协议、支持网络、可基于内存亦可持久化的日志型、键值数据库，运行在内存中，支持多种数据类型的存储，并提供多种语言的API。由于Redis是基于内存的，所以它的运行速度很快，是关系数据库几倍到几十倍的速度。
+
+Redis是一种键值非关系数据库，而且是以字符串类型为中心的，当前它能够支持多种数据类型，包括字符串、哈希、列表（链表）、集合、有序集合、位图、基数、地理位置和流。
+
+## 7.1 spring-data-redis项目简介
+
+### 7.1.1 spring-data-redis项目的设计
+### 7.1.2 RedisTemplate和StringRedisTemplate
+
+Redis是一个基于字符串存储的NoSQL数据库，而Java是基于对象的语言，对象是无法存储到Redis中的。为此，Java提供了序列化机制，在Java中只要类实现了java.io.Serializable接口，就表示类对象能够进行序列化，通过将类对象进行序列化就能够得到各类序列化后的字符串，这样Redis就可以将这些类对象以字符串形式进行存储。Java也可以将那些序列化后的字符串通过反序列化转换为Java对象。
+
+### 7.1.3 Spring对Redis数据类型操作的封装
+
+```java
+// 获取Redis数据类型操作接口
+
+// 获取字符串操作接口
+redisTemplate.opsForValue();
+// 获取哈希操作接口
+redisTemplate.opsForHash();
+// 获取列表（链表）操作接口
+redisTemplate.opsForList();
+// 获取集合操作接口
+redisTemplate.opsForSet();
+// 获取有序集合操作接口
+redisTemplate.opsForZSet();
+
+
+// 获取绑定键的操作类
+
+// 获取字符串绑定键操作接口
+redisTemplate.boundValueOps("string");
+// 获取哈希绑定键操作接口
+redisTemplate.boundHashOps("hash");
+// 获取列表（链表）绑定键操作接口
+redisTemplate.boundListOps("list");
+// 获取集合绑定键操作接口
+redisTemplate.boundSetOps("set");
+// 获取有序集合绑定键操作接口
+redisTemplate.boundZSetOps("zset");
+```
+
+
+
+### 7.1.4 SessionCallback和RedisCallback接口
+
+SessionCallback和RedisCallback接口，它们的作用是让RedisTemplate进行回调，通过这两个接口可以在同一条Redis连接下执行多个命令。SessionCallback提供了良好的封装，对开发者比较友好，因此在实际的开发中应该优先选择使用它。相对而言，RedisCallback接口位于更底层，需要处理的内容也比较多，可读性较差，所以在非必要的时候尽量不选择使用它。
+
+```java
+public void useSessionCallback(RedisTemplate redisTemplate) { // SessionCallback接口
+   var sessionCallback = new SessionCallback<Object>() {
+      @Override
+      public Object execute(RedisOperations operations) throws DataAccessException {
+         operations.opsForValue().set("key1", "value1");
+         operations.opsForHash().put("hash", "field", "hvalue");
+         return null;
+      }
+   };
+   redisTemplate.execute(sessionCallback);
+}
+　
+public void useRedisCallback(RedisTemplate redisTemplate) { // RedisCallback接口
+   redisTemplate.execute((RedisConnection rc) -> {
+      rc.stringCommands().set("key1".getBytes(), "value1".getBytes());
+      rc.hashCommands().hSet("hash".getBytes(),
+            "field".getBytes(), "hvalue".getBytes());
+      return null;
+   });
+}
+```
+
+SessionCallback和RedisCallback接口都能够让RedisTemplate使用同一条Redis连接进行回调，从而可以在同一条Redis连接下执行多个命令，避免RedisTemplate多次获取不同的连接。
+
+
+
+## 7.2 在Spring Boot中配置和操作Redis
+### 7.2.1 在Spring Boot中配置Redis
+### 7.2.2 操作Redis数据类型
+
+Redis不允许集合成员重复，集合在数据结构上是一个哈希表，所以是无序的。对于两个或者以上的集合，Redis还提供了交集、并集和差集的运算。
+
+
+
+## 7.3 Redis的一些特殊用法
+
+除了操作数据类型的功能，Redis还支持事务、流水线、发布/订阅和Lua脚本等功能，这些也是Redis常用的功能。在高并发场景中往往需要保证数据的一致性，这时考虑使用Redis事务或者利用Redis运行Lua脚本的原子性来保证数据一致性。在需要大批量执行Redis命令的时候，可以使用流水线来执行命令，这样可以避免网络延时，极大地提升客户端向Redis服务器传送命令的速度。
+
+### 7.3.1 使用Redis事务
+
+Redis是支持一定事务能力的NoSQL数据库，在Redis中使用事务，通常的命令组合是**watch... multi...exec**，也就是要在一个Redis连接中执行多个命令，这时可以考虑使用SessionCallback接口来达到这个目的。watch命令可以监控Redis的一些键。multi命令的作用是开启事务，开启事务后，当前客户端的命令不会马上被执行，而是被存储在一个队列里。例如，这时我们执行一些返回数据的命令，Redis并不会马上执行命令，而是把命令存储在一个队列里。因此，此时调用Redis的命令会返回null，这是初学者容易犯的错误。exec命令的作用是执行事务，它在队列命令执行前会判断被watch监控的Redis的键的数据是否发生过变化（即使赋予与之前相同的值也会被认为变化过），如果它认为发生了变化，那么Redis就会取消事务，否则就会执行事务。Redis在执行事务时，要么全部执行，要么全部不执行，而且不会被其他客户端打断，这样就保证了Redis执行事务时数据的一致性。
+
+
+
+Redis的事务执行过程：
+
+* 开始
+* watch命令
+* multi命令开启事务
+* 命令进入队列
+* exec命令执行事务
+* 监控键值对发生变化（判断watch命令监控的键值对是否发生变化）
+  * 是，取消事务
+  * 否，执行事务
+* 取消对监控的键值对
+* 结束
+
+
+
+**注意，这就是Redis事务和数据库事务的不同之处，Redis事务先让命令进入队列，所以一开始它并没有检测这个加1命令是否能够成功，只有exec命令执行时才能发现错误，对于出错的命令，Redis只是报出错误，后面的命令依旧被执行，所以key2和key3都存在数据，这就是使用Redis事务需要特别注意的地方。为了克服这个问题，一般我们要在执行Redis事务前严格地检查数据，避免这样的情况发生。**
+
+
+
+### 7.3.2 使用Redis流水线
+
+Redis也可以批量执行命令，这便是流水线(pipeline)技术，在很多情况下并不是Redis性能不佳，而是网络传输的速度慢造成瓶颈，使用流水线技术可以在需要执行很多命令时大幅度地提升。
+
+
+
+### 7.3.3 使用Redis发布/订阅
+
+### 7.3.4 使用Lua脚本
+
+在Redis中运行Lua脚本具备原子性，且Lua脚本具备更加强大的计算能力，在高并发环境中需要保证数据一致性时，使用Lua脚本方案比使用Redis自身提供的事务更好。
+
+Redis提供了两种运行Lua的方法：一种是直接发送Lua脚本到Redis服务器运行；另一种是先把Lua脚本发送给Redis服务器，Redis服务器对Lua脚本进行缓存，然后返回一个32位的SHA1编码，之后只需要发送SHA1和相关参数给Redis服务器便可以运行了。这里需要解释为什么会存在通过32位编码运行Lua脚本的方法。如果Lua脚本很长，那么就需要通过网络传递脚本给Redis服务器运行，而现实的情况是网络的传递速度往往跟不上Redis的运行速度，因此网络速度就会成为Redis运行的瓶颈。如果只传递32位编码和参数，那么需要通过网络传输的消息就少了许多，这样就可以提高系统的性能。
+
+为了支持Redis的Lua脚本，Spring提供了RedisScript接口，与此同时也提供了一个DefaultRedisScript实现类。
+
+```java
+package org.springframework.data.redis.core.script;
+　
+/**** imports ****/
+public interface RedisScript<T> {
+　
+   String getSha1();
+　
+   @Nullable
+   Class<T> getResultType();
+　
+   String getScriptAsString();
+　
+   default boolean returnsRawValue() {
+      return getResultType() == null;
+   }
+　
+   // 通过Lua脚本来创建DefaultRedisScript对象
+   static <T> RedisScript<T> of(String script) {
+      return new DefaultRedisScript<>(script);
+   }
+　
+   // 通过Lua脚本来创建DefaultRedisScript对象，并设置返回类型
+   static <T> RedisScript<T> of(String script, Class<T> resultType) {
+      Assert.notNull(script, "Script must not be null");
+      Assert.notNull(resultType, "ResultType must not be null");
+      return new DefaultRedisScript<>(script, resultType);
+   }
+　
+   // 从资源中读取Lua脚本
+   static <T> RedisScript<T> of(Resource resource) {
+      Assert.notNull(resource, "Resource must not be null");
+      DefaultRedisScript<T> script = new DefaultRedisScript<>();
+      script.setLocation(resource);
+      return script;
+   }
+　
+   // 从资源中读取Lua脚本，并设置返回类型
+   static <T> RedisScript<T> of(Resource resource, Class<T> resultType) {
+      Assert.notNull(resource, "Resource must not be null");
+      Assert.notNull(resultType, "ResultType must not be null");
+      DefaultRedisScript<T> script = new DefaultRedisScript<>();
+      script.setResultType(resultType);
+      script.setLocation(resource);
+      return script;
+   }
+}
+```
 
 
 
 
 
+## 7.4 使用Spring缓存注解操作Redis
+### 7.4.1 缓存管理器和缓存的启用
+### 7.4.2 开发缓存注解
+### 7.4.3 测试缓存注解
+### 7.4.4 缓存注解自调用失效问题
+### 7.4.5 缓存脏数据说明
+### 7.4.6 自定义缓存管理器
 
 
 

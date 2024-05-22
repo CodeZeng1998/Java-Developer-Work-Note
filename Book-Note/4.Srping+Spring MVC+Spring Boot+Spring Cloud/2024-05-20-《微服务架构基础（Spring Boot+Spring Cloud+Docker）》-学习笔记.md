@@ -4,7 +4,7 @@
 
 > PS：本书是记录黑马程序员的《微服务架构基础（Spring Boot+Spring Cloud+Docker）》这本书的学习笔记，内容较多，建议收藏。
 >
-> 书籍评语：非常非常基础的内容，内容有点过于简单了，几乎都是泛泛而谈。
+> 书籍评语：Spring Boot、Spring Cloud、Docker的基础内容。
 
 
 
