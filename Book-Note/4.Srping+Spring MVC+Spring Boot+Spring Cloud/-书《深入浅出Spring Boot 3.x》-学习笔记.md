@@ -1818,7 +1818,573 @@ public RedisCacheManager initRedisCacheManager() {
 
 
 
+# 第8章 文档数据库:--MongoDB
 
+对于那些需要缓存而且经常需要统计、查询和分析的数据，使用Redis这样简单的NoSQL数据库显然就不是那么便捷了，这时另一个NoSQL数据库就派上用场了，它就是本章的主题MongoDB。MongoDB对于需要统计、按条件查询和分析的数据提供了支持，可以说是一个最接近关系数据库的NoSQL数据库。
+
+
+
+## 8.1 配置MongoDB
+
+```properties
+# MONGODB (MongoProperties)
+# MongoDB服务器名称或者IP
+spring.data.mongodb.host=
+# MongoDB数据库名称
+spring.data.mongodb.database=
+# MongoDB数据库用户名和密码
+spring.data.mongodb.username=
+spring.data.mongodb.password=
+# MongoDB服务端口
+spring.data.mongodb.port=
+# MongoDB网格文件数据库名称
+spring.data.mongodb.gridfs.database=
+# MongoDB网格文件桶名称
+spring.data.mongodb.gridfs.bucket=
+# MongoDB其他服务器名称，如果当前服务器连接不上就选用这些备用服务器
+spring.data.mongodb.additional-hosts=
+# MongoDB签名数据库名称
+spring.data.mongodb.authentication-database=
+# 是否让MongoDB自动生成索引
+spring.data.mongodb.auto-index-creation=true
+# MongoDB字段命名策略
+spring.data.mongodb.field-naming-strategy=
+# MongoDB数据库复制集合名称
+spring.data.mongodb.replica-set-name=
+# 连接MongoDB的URI，将服务上面配置的服务器、用户名、密码和端口等值
+spring.data.mongodb.uri=
+# 是否启用MongoDB关于JPA规范的编程
+spring.data.mongodb.repositories.type=auto
+#  将UUID转换为BSON二进制值时使用的标识。
+spring.data.mongodb.uuid-representation=java_legacy
+```
+
+
+
+## 8.2 使用MongoTemplate实例
+### 8.2.1 准备MongoDB的文档
+
+```java
+package com.learn.chapter8.pojo;
+import java.io.Serializable;
+import java.util.List;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
+// 标识为MongoDB文档
+@Document
+public class User implements Serializable {
+   private static final long serialVersionUID = -7895435231819517614L;
+   // MongoDB文档编号，主键
+   @Id
+   private Long id;
+　
+   // 在MongoDB中使用user_name保存属性
+   @Field("user_name")
+   private String userName = null;
+　
+   private String note = null;
+　
+   // 角色列表
+   private List<Role> roles = null;
+   /**** setters and getters ****/
+}
+```
+
+User类被标识为@Document，这说明它将作为MongoDB的文档存在。注解@id则将对应的字段设置为主键，因为MongoDB的规范采用下画线分隔，而Java一般采用驼峰式命名，所以这里使用了@Field进行设置，这样属性userName就与MongoDB中的user_name属性对应起来了。上述代码里还有一个角色列表（属性roles），如果只是想保存其引用，可以使用@DBRef标注，这样它只会保存引用信息，而不会保存具体的角色信息。
+
+
+
+### 8.2.2 使用MongoTemplate操作文档
+
+```java
+package com.learn.chapter8.service.impl;
+/**** imports ****/
+@Service
+public class UserServiceImpl implements UserService {
+　
+   // 注入MongoTemplate对象
+   @Autowired
+   private MongoTemplate mongoTmpl = null;
+　
+   @Override
+   public void saveUser(User user) {
+      mongoTmpl.save(user);
+   }
+　
+   @Override
+   public User getUser(Long id) {
+      return mongoTmpl.findById(id, User.class);
+      /**
+       // 如果只需要获取第一个，也可以采用如下查询方法
+       var  criteriaId  = Criteria.where("id").is(id);
+       var queryId = Query.query(criteriaId);
+       return mongoTmpl.findOne(queryId, User.class);
+       */
+   }
+　
+   @Override
+   public List<User> findUser(
+          String userName, String note, int skip, int limit) {
+      // 将用户名和备注设置为模糊查询准则
+      var criteria  = Criteria.where("userName").regex(userName)
+             .and("note").regex(note);
+      // 构建查询条件,并设置分页跳过前skip个，至多返回limit个
+      var query = Query.query(criteria).limit(limit).skip(skip);
+      // 运行MongoDB的查询并返回结果
+      var userList = mongoTmpl.find(query, User.class);
+      return userList;
+   }
+   ......
+       
+@Override
+public UpdateResult updateUser(Long id, String userName, String note) {
+   // 确定要更新的对象
+   var criteriaId  = Criteria.where("id").is(id);
+   var query = Query.query(criteriaId);
+   // 定义更新对象
+   var update = Update.update("userName", userName);
+   update.set("note", note); //设置更新属性
+   // 更新第一个文档
+   var result = mongoTmpl.updateFirst(query, update, User.class);
+   // 更新多个文档
+   // var result = mongoTmpl.updateMulti(query, update, User.class);
+   // 如果不存在文档，则新建文档，否则只更新文档
+   // mongoTmpl.upsert(query, update, User.class);
+   return result;
+}
+    
+@Override
+public DeleteResult deleteUser(Long id) {
+   // 构建id相等的条件
+   var  criteriaId  = Criteria.where("id").is(id);
+   // 查询对象
+   var queryId = Query.query(criteriaId);
+   // 删除用户
+   var result = mongoTmpl.remove(queryId, User.class);
+   return result;
+}
+}
+```
+
+MongoTemplate又有updateFirst()、updateMulti()和upsert()这3个方法，其中updateFirst()方法表示只更新第一个文档，updateMulti()方法表示更新多个满足Query对象限定的文档，upsert()方法表示如果不存在文档，则新建文档，否则只更新文档。
+
+
+
+## 8.3 使用JPA
+
+### 8.3.1 基本用法
+
+```java
+package com.learn.chapter8.repository;
+/**** imports ****/
+// 标识为JPA接口
+@Repository
+// 扩展MongoRepository接口
+public interface UserRepository extends MongoRepository<User, Long> {
+   /**
+    * 符合JPA规范命名方法，则不需要再实现该方法也可用
+    * 意在对满足条件的文档按照用户名进行模糊查询
+    * @param userName -- 用户名
+    * @return 满足条件的用户信息
+    */
+   List<User> findByUserNameLike(String userName);
+}
+```
+
+这个接口先使用@Repository进行标识，表示这是一个JPA接口，而接口扩展了MongoRepository接口，MongoRepository接口指定了两个泛型：
+
+* 一个是实体类型，这个实体类型要求标注@Document
+* 另一个是其主键的类型，这个类型要求标注@Id，这里指定为User类和Long。首先该类标注了@Document，其次该类的id属性上标注了注解@Id，说明它是文档的主键，且类型为Long。findByUserNameLike()方法是一个符合JPA命名方式的接口方法，表示对用户名进行模糊查询。
+
+```java
+package com.learn.chapter8.main;
+/**** imports ****/
+// 指定扫描的包
+@SpringBootApplication(scanBasePackages = "com.learn.chapter8")
+// 指定扫描的包，用于扫描扩展了MongoRepository的接口
+@EnableMongoRepositories(basePackages="com.learn.chapter8.repository")
+public class Chapter8Application {
+　
+   public static void main(String[] args) {
+      SpringApplication.run(Chapter8Application.class, args);
+   }
+}
+```
+
+上述代码定义了注解@EnableMongoRepositories，并且通过basePackages配置项指定了JPA接口所在的包，这样Spring就能够将UserRepository接口扫描为对应的Bean并装配到IoC容器中。
+
+
+
+### 8.3.2 使用自定义查询
+
+```java
+/**
+ * 使用id和userName查询
+ * 注解@Query中的阿拉伯数字指定参数的下标，以0开始
+ * @param id -- 编号
+ * @param userName
+ * @return 用户信息
+ */
+@Query("{'id': ?0, 'userName' : ?1}")
+User find(Long id, String userName);
+```
+
+Spring提供了新的约定，在Spring中只要定义一个名称为“接口名称+Impl”的类并且提供与接口定义相同的方法，Spring就会自动找到这个类对应的方法来作为JPA接口定义方法的实现。
+
+```java
+package com.learn.chapter8.repository.impl;
+　
+/****imports ****/
+// 定义为数据访问层
+@Repository
+// 注意这里的类名称，由于接口名称为UserRepository，按要求定义，类名称则为“接口名称+Impl”
+// JPA会自动找到这个类对应的方法，作为JPA接口定义方法的实现
+public class UserRepositoryImpl {
+   @Autowired// 注入MongoTemplate
+   private MongoTemplate mongoTmpl = null;
+　
+   // 注意，方法名称与接口定义也需要保持一致
+   public User findUserByIdOrUserName(Long id, String userName) {
+      // 构造id查询准则
+      var criteriaId = Criteria.where("id").is(id);
+      // 构造用户名查询准则
+      var criteriaUserName = Criteria.where("userName").is(userName);
+      var criteria = new Criteria();
+      // 使用$or操作符关联两个条件，形成或关系
+      criteria.orOperator(criteriaId, criteriaUserName);
+      var query = Query.query(criteria);
+      // 执行查询，返回结果
+      return mongoTmpl.findOne(query, User.class);
+   }
+}
+```
+
+# 第9章 初识Spring MVC
+
+Spring MVC一开始就定位为一个较为松散的组合，展示给用户的**视图(View)**、控制器返回的**数据模型(Model)**、定位视图的**视图解析器(ViewResolver)**和**处理器适配器(HandlerAdapter)**等内容都是相对独立的。
+
+## 9.1 Spring MVC框架的设计
+
+## 9.2 Spring MVC流程
+
+ChatGPT:
+
+Spring MVC（Model-View-Controller）框架在Java中设计用于简化Web应用程序的开发。以下是其工作流程的基本概述：
+
+1. **请求处理**：当客户端发送请求时，它被**DispatcherServlet**拦截。此Servlet充当前端控制器，并根据URL映射将请求委派给适当的处理程序。
+2. **DispatcherServlet**：它接收所有传入的请求，然后将它们分派到适当的控制器以进行处理。它还处理异常、区域设置、主题解析和其他与MVC相关的任务。
+3. **处理程序映射**：此组件根据应用程序配置文件中配置的URL模式，将传入的请求映射到适当的处理程序（控制器）。
+4. **控制器**：一旦DispatcherServlet确定要使用的控制器，它就会调用适当的控制器方法来处理请求。控制器负责处理用户输入、准备模型并选择视图。
+5. **模型**：控制器准备数据（模型），该数据将由视图生成输出。这可能涉及查询数据库、调用业务逻辑或与其他服务交互。
+6. **视图解析**：在控制器处理请求并填充模型之后，DispatcherServlet根据控制器返回的逻辑视图名称确定适当的视图。
+7. **视图渲染**：最后，选择的视图使用模型中的数据进行渲染。渲染的输出然后作为响应发送回客户端。
+
+
+
+
+
+
+
+* 注解@Controller表明这是一个控制器，@RequestMapping配置请求路径和控制器（或其方法）的映射关系。在Web服务器启动Spring MVC时，映射关系就会被扫描到**处理器映射(HandlerMapping)**机制中存储，之后在用户发起请求被**DispatcherServlet**拦截后，根据URI和其他的条件，通过**HandlerMapping**机制就能找到对应的控制器（或其方法）进行响应。但是，通过HandlerMapping机制返回的是一个HandlerExecutionChain对象。
+* HandlerExecutionChain对象包含一个处理器(handler)，处理器会封装好控制器方法。处理器还会处理请求参数的转换，并且在控制器方法返回后，处理器也可以对返回值进行进一步的处理。从这段描述可以看出，处理器包含控制器方法的逻辑，并且增强了控制器的功能。此外，HandlerExecutionChain包含处理器的拦截器(HandlerInterceptor)，这样就能够通过拦截处理器来增强功能了。
+* 得到了处理器，还需要运行，但是我们有普通的HTTP请求或者别的请求（如WebSocket的请求），还需要一个处理器适配器来运行HandlerExecutionChain对象，这就是适配器机制，在Spring MVC中是通过HandlerAdapter接口定义的。
+
+
+
+**SpringMVC 运行流程：**
+
+* **HTTP请求**
+* **被DispatchServlet拦截**
+* **在HandlerMapping（处理器映射：定位到控制器及其方法）（由注解@RequestMapping提供URI和其他配置）--> HandlerExecutionChain（处理器执行链：包含处理器及其拦截器）**
+* **HttpRequestHandlerAdapter --> 运行处理器，返回结果**
+* **ModelAndView（视图名称、数据模型）**
+* **DispatchServlet**
+* **视图解析器：定位视图**
+* **View（将用户模型渲染展示）**
+
+**在我们加入@ResponseBody将返回结果转变为JSON数据集时，没有经过视图解析器和视图渲染。**
+
+
+
+## 9.3 定制Spring MVC的初始化
+## 9.4 Spring MVC实例
+
+Spring MVC的开发核心是控制器开发，分为以下几步：
+
+* (1)定义请求分发，让Spring MVC能够产生HandlerMapping；
+* (2)接收请求并获取参数；
+* (3)处理业务逻辑并获取数据模型；
+* (4)绑定视图和数据模型并返回。
+
+定位视图和将数据模型渲染到视图中，则不属于控制器开发的步骤。
+
+
+
+### 9.4.1 开发控制器
+### 9.4.2 视图和视图渲染
+
+
+
+# 第10章 深入Spring MVC开发
+## 10.1 处理器映射
+
+如果Web工程使用了Spring MVC，那么它在启动阶段就会将注解@RequestMapping配置的内容保存到处理器映射(HandlerMapping)机制中，然后等待请求的到来，通过拦截请求信息与HandlerMapping进行匹配，找到对应的处理器（处理器包装了控制器），并将处理器及其拦截器保存到HandlerExecutionChain对象中，返回给DispatcherServlet，这样DispatcherServlet就可以运行它们了。可以看到，HandlerMapping的主要任务是将请求定位到具体的处理器上。
+
+* **@RequestMapping**
+* **@PostMapping**
+* **@GetMapping**
+* **@PutMapping**
+* **@PatchMapping**
+* **@DeleteMapping**
+
+
+
+## 10.2 获取控制器参数
+
+### 10.2.1 在无注解的情况下获取参数
+
+在无注解的情况下，Spring MVC也可以获取参数，且允许参数为空，唯一的要求是**参数名称和HTTP参数名称一致**
+
+
+
+### 10.2.2 使用@RequestParam获取参数
+
+* @RequestParam
+* **默认的情况下@RequestParam标注的参数是不能为空的，如果允许参数为空，可以配置其属性required为false**
+
+
+
+### 10.2.3 传递数组
+
+Spring MVC内部已经支持用逗号分隔的数组参数
+
+
+
+### 10.2.4 传递JSON数据集
+
+* @RequestBody
+
+
+
+### 10.2.5 通过URL传递参数
+
+有一些网站使用了REST风格，这时往往通过URL传递参数。
+
+Spring MVC对此也提供了良好的支持，可以通过处理器映射和注解@PathVariable的组合来获取URL参数。先通过处理器映射定位参数的位置和名称，然后通过@PathVariable依靠URL定制的参数名称来获取参数
+
+* @PathVariable
+
+```java
+// {......}表示占位符，还可以配置参数名称
+@GetMapping("/{id}")
+// 响应为JSON数据集
+@ResponseBody
+// @PathVariable通过参数名称来获取参数
+public User get(@PathVariable("id") Long id) {
+   return userService.getUser(id);
+}
+```
+
+
+
+### 10.2.6 获取格式化参数
+
+* @DateTimeFormat是针对日期进行格式化的
+* @NumberFormat则是针对数字类型进行格式化的
+
+```java
+// 映射页面
+@GetMapping("/format/form")
+public String showFormat() {
+   return "/format/formatter";
+}
+　
+// 获取提交参数
+@PostMapping("/format/commit")
+@ResponseBody
+public Map<String, Object> format(
+       @DateTimeFormat(iso=ISO.DATE) Date date,
+       @NumberFormat(pattern = "#,###.##") Double number) {
+   var dataMap = new HashMap<String, Object>();
+   dataMap.put("date", date);
+   dataMap.put("number", number);
+   return dataMap;
+}
+```
+
+在Spring Boot中，日期和时间参数的格式化也可以不使用@DateTimeFormat，而只在配置文件application.properties中加入如下配置项：
+
+```properties
+# 日期格式化
+spring.mvc.format.date=yyyy-MM-dd
+# 时间格式化
+spring.mvc.format.date-time=yyyy-MM-dd HH:mm:ss
+```
+
+
+
+## 10.3 自定义参数转换规则
+
+### 10.3.1 处理器转换参数逻辑
+### 10.3.2 一对一转换器
+### 10.3.3 GenericConverter集合和数组转换
+## 10.4 数据验证
+
+### 10.4.1 JSR-303验证
+### 10.4.2 参数验证机制
+## 10.5 数据模型
+
+## 10.6 视图和视图解析器
+
+### 10.6.1 视图设计
+### 10.6.2 视图实例--导出Excel文档
+## 10.7 文件上传
+
+### 10.7.1 文件上传的配置项
+### 10.7.2 开发文件上传功能
+
+## 10.8 拦截器
+
+### 10.8.1 设计拦截器
+### 10.8.2 开发拦截器
+### 10.8.3 多个拦截器方法的运行顺序
+## 10.9 国际化
+
+### 10.9.1 国际化消息源
+### 10.9.2 国际化解析器
+### 10.9.3 国际化实例--SessionLocaleResolver
+
+## 10.10 Spring MVC拾遗
+
+### 10.10.1 @ResponseBody转换为JSON的秘密
+### 10.10.2 重定向
+### 10.10.3 操作会话属性
+### 10.10.4 给控制器增加通知
+### 10.10.5 获取请求头参数
+
+# 第11章 构建REST风格网站
+## 11.1 REST简述
+
+### 11.1.1 REST名词解释
+### 11.1.2 HTTP的动作
+### 11.1.3 REST风格的一些误区
+## 11.2 使用Spring MVC开发REST风格端点
+
+### 11.2.1 Spring MVC整合REST
+### 11.2.2 使用Spring开发REST风格的端点
+### 11.2.3 使用@RestController
+
+### 11.2.4 渲染结果
+### 11.2.5 处理HTTP状态码、响应头和异常
+## 11.3 客户端请求RestTemplate
+
+### 11.3.1 使用RestTemplate请求后端
+### 11.3.2 获取状态码和响应头
+### 11.3.3 定制请求体和响应类型
+
+# 第12章 安全--Spring Security
+## 12.1 概述和简单安全验证
+
+### 12.1.1 使用用户密码登录系统
+### 12.1.2 Spring Security的配置项
+### 12.1.3 开发Spring Security的主要的类
+## 12.2 使用UserDetailsService接囗定制用户信息
+
+### 12.2.1 使用内存保存用户信息
+### 12.2.2 从数据库中读取用户信息
+### 12.2.3 使用自定义UserDetailsService对象
+
+### 12.2.4 密码编码器
+## 12.3 限制请求
+
+### 12.3.1 配置请求路径访问权限
+### 12.3.2 自定义验证方法
+### 12.3.3 不拦截的请求
+### 12.3.4 防止跨站点请求伪造
+## 12.4 登录和登出设置
+
+### 12.4.1 自定义登录页面
+### 12.4.2 启用HTTP Basic验证
+
+### 12.4.3 登出配置
+
+# 第13章 学点Spring其他的技术
+## 13.1 异步线程池
+
+### 13.1.1 定义线程池和开启异步可用
+### 13.1.2 异步实例
+## 13.2 异步消息-I-RabbitMo
+## 13.3 定时任务
+
+# 第14章 实践-下--抢购商品
+## 14.1 设计与开发
+
+### 14.1.1 数据库表设计
+### 14.1.2 使用MyBatis开发持久层
+### 14.1.3 使用Spring开发业务层和控制层
+### 14.1.4 测试和配置
+## 14.2 高并发开发
+
+### 14.2.1 超发现象
+### 14.2.2 悲观锁
+
+### 14.2.3 乐观锁
+
+# 第15章 打包、测试、监控、预先编译和容器部署
+## 15.1 打包和运行
+
+### 15.1.1 打包项目
+### 15.1.2 运行项目
+### 15.1.3 热部署
+## 15.2 测试
+
+### 15.2.1 构建测试类
+### 15.2.2 使用随机端口和REST风格测试
+
+### 15.2.3 Mock测试
+## 15.3 Actuator监控端点
+## 15.4 HTTP监控
+
+### 15.4.1 查看敏感信息
+### 15.4.2 shutdown端点
+### 15.4.3 配置端点
+### 15.4.4 自定义端点
+### 15.4.5 健康指标项
+
+## 15.5 JMX监控
+## 15.6 预先编译
+
+### 15.6.1 搭建GraalVM环境
+### 15.6.2 创建项目
+### 15.6.3 生成和运行原生文件
+## 15.7 部署到Docker容器中
+
+# 第16章 Spring Cloud Alibaba微服务开发
+## 16.1 服务治理--Alibaba Nacos
+
+## 16.1.1 下载、安装、配置和启动Nacos
+
+### 16.1.2 服务发现
+### 16.1.3 搭建Nacos集群
+## 16.2 服务调用
+
+### 16.2.1 客户端负载均衡
+### 16.2.2 OpenFeign声明式服务调用
+## 16.3 容错机制--Spring Cloud Alibaba Sentinel
+
+### 16.3.1 设置埋点
+### 16.3.2 Sentinel控制台
+### 16.3.3 流控
+### 16.3.4 熔断
+
+### 16.3.5 在OpenFeign中使用Sentinel
+## 16.4 API网关--Spring Cloud Gateway
+
+### 16.4.1 Gateway的工作原理
+### 16.4.2 配置路由规则
+### 16.4.3 过滤器
+### 16.4.4 使用Sentinel管控Gateway
 
 
 
