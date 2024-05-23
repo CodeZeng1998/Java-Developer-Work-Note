@@ -1668,14 +1668,151 @@ public interface RedisScript<T> {
 ## 7.4 使用Spring缓存注解操作Redis
 ### 7.4.1 缓存管理器和缓存的启用
 ### 7.4.2 开发缓存注解
+
+```java
+package com.learn.chapter7.service.impl;
+/**** imports ****/
+@Service
+public class UserServiceImpl implements UserService {
+　
+   @Autowired
+   private UserDao userDao = null;
+　
+   // 新增用户，最后MyBatis机制会回填id值，取结果id缓存用户
+   @Override
+   @Transactional
+   @CachePut(value ="redisCache", key = "'redis_user_'+#result.id")
+   public User insertUser(User user) {
+      userDao.insertUser(user);
+      return user;
+   }
+　
+   // 获取id，取参数id缓存用户
+   @Override
+   @Transactional
+   @Cacheable(value ="redisCache", key = "'redis_user_'+#id")
+   public User getUser(Long id) {
+      return userDao.getUser(id);
+   }
+　
+   // 更新数据后，更新缓存，如果condition配置项使结果返回为null，不缓存
+   @Override
+   @Transactional
+   @CachePut(value ="redisCache",
+          condition="#result != 'null'", key = "'redis_user_'+#id")
+   public User updateUserName(Long id, String userName) {
+      // 此处调用getUser()方法，该方法缓存注解失效
+      // 所以还会运行SQL语句，将查询到数据库中的最新数据
+      var user =this.getUser(id);
+      if (user == null) {
+         return null;
+      }
+      user.setUserName(userName);
+      userDao.updateUser(user);
+      return user;
+　
+   }
+　
+   // 命中率低，所以不采用缓存机制
+   @Override
+   @Transactional
+   public List<User> findUsers(String userName, String note) {
+      return userDao.findUsers(userName, note);
+   }
+　
+   // 移除缓存
+   @Override
+   @Transactional
+   @CacheEvict(value ="redisCache", key = "'redis_user_'+#id",
+         beforeInvocation = false)
+   public int deleteUser(Long id) {
+      return userDao.deleteUser(id);
+   }
+}
+```
+
+注解@CachePut、@Cacheable和@CacheEvict的含义。
+
+* @CachePut表示将方法返回的结果存储到缓存中。
+* @Cacheable表示先通过定义的键从缓存中查询，如果可以查询到数据则返回，否则运行该方法，返回数据，并且将返回的结果存储到缓存中。
+* @CacheEvict通过定义的键移除缓存，它有一个Boolean类型的配置项beforeInvocation，表示在运行方法之前或者之后移除缓存。因为其默认值为false，所以默认为在运行方法之后移除缓存。
+
+上述3个缓存中都配置了value ="redisCache"，我们在Spring Boot中配置对应的缓存名称为redisCache（见代码清单7-29）后，值配置项就能够引用到对应的缓存管理器了，而键配置项则是一个SpEL，很多时候可以看到配置为'redis_user_'+#id，其中#id表示参数，由于它是通过参数名称来匹配的，所以要求方法存在一个参数且名称为id，通过这样定义，Spring就会用表达式返回字符串作为键来操作缓存了。除此之外，还可以这样引用参数：如#a[0]或者#p[0]表示第一个参数，#a[1]或者#p[1]表示第二个参数……但是这样引用的可读性较差，所以我们一般不这么写。
+
+有时候我们希望使用返回结果的一些属性缓存数据，如insertUser()方法。在将用户插入数据库前，对应的用户是没有id的，这个id值会在新增后由MyBatis的机制回填，因此我们希望使用返回结果，这样使用#result就表示返回的结果对象了，#result是一个User对象，#result.id的作用是取出它的属性id，这样就可以引用这个由数据库生成的id了。
+
+更新数据需要慎重一些，一般情况下我们不要轻易地相信缓存，因为缓存存在脏读的可能性，在需要更新数据时我们往往考虑先从数据库查询出最新数据，再进行操作，因此updateUserName()方法先调用了getUser()方法。由于上述代码中的getUser()方法标注了注解@Cacheable，所以很多读者可能会认为getUser()方法会从缓存中读取数据，进而受到脏数据的影响。然而，这里的事实是这个注解@Cacheable失效了，也就是说使用updateUserName()方法调用getUser()方法的逻辑并不存在读取缓存的可能，它每次都会运行SQL语句来查询数据库中的最新数据。关于这个缓存注解失效的问题，这里只是提醒读者，更新数据时应该谨慎一些，尽量避免读取缓存数据，因为缓存会存在脏数据的可能。
+
+
+
+```properties
+# Redis配置
+spring.redis.data.port=6379
+spring.data.redis.password=abcdefg
+spring.data.redis.host=192.168.80.137
+spring.data.redis.lettuce.pool.min-idle=5
+spring.data.redis.lettuce.pool.max-active=10
+spring.data.redis.lettuce.pool.max-idle=10
+spring.data.redis.lettuce.pool.max-wait=2s
+　
+#缓存配置
+spring.cache.type=REDIS
+spring.cache.cache-names=redisCache
+```
+
+
+
 ### 7.4.3 测试缓存注解
 ### 7.4.4 缓存注解自调用失效问题
+
+缓存注解自调用失效问题在上述代码中，使用updateUserName()方法调用getUser()方法，7.4.2节说明过这会使得在getUser()方法上的缓存注解失效，为什么会这样呢？其实6.5.3节在讨论@Transactional自调用失效问题时已经探讨过其原理，这是因为**Spring的缓存机制也是基于AOP的，而在Spring中AOP是通过动态代理技术来实现的，updateUserName()方法调用getUser()方法是类内部的自调用，并不存在代理对象的调用，这样便不会出现AOP，也就不会使用标注在getUser()上的缓存注解来获取缓存的值了。要克服缓存注解失效的问题，可以参考6.5.3节，像数据库事务那样用两个服务类(Service)相互调用，或者直接从IoC容器中获取代理对象来操作。**
+
+
+
 ### 7.4.5 缓存脏数据说明
+
+* 对缓存来说，我们可以给定一个时间让它失效，也就是说在Redis中可以设置超时时间，当缓存超过超时时间后，应用不再能够从缓存中获取数据，而只能从数据库中重新获取最新数据，以保证数据及时刷新。对于那些实时性要求比较高的数据，我们可以把缓存时间设置得短一些，这样就会更加频繁地刷新缓存，但不利的是会增加数据库的压力。对于那些要求不是那么高的数据，则可以把超时时间设置得长一些，这样可以降低数据库的压力。
+* 相比于读操作，数据的写操作采取的策略就完全不一样，需要谨慎一些。一般会认为缓存不可信，所以会考虑先从数据库中读取最新数据，再更新数据，以免将缓存的脏数据写入数据库中，导致业务问题的出现。
+
+
+
 ### 7.4.6 自定义缓存管理器
 
+Spring有两种定制缓存管理器的方法：一种是像代码清单7-23那样通过**配置消除缓存键的前缀和自定义超时时间的属性来定制生成RedisCacheManager；**另一种是不采用Spring Boot生成的方式，而是完全**通过自己的代码创建缓存管理器**，尤其是当需要进行比较多的自定义的时候，更加推荐开发者采用自定义的代码。
 
+```java
+// 注入连接工厂，由Spring Boot自动配置生成
+@Autowired
+private RedisConnectionFactory connectionFactory = null;
+　
+// 自定义Redis缓存管理器
+@Bean(name = "redisCacheManager" )
+public RedisCacheManager initRedisCacheManager() {
+   //不加锁的Redis写入器
+   var writer= RedisCacheWriter.nonLockingRedisCacheWriter(connectionFactory);
+   // 启用Redis缓存的默认设置
+   var config = RedisCacheConfiguration.defaultCacheConfig()
+          // 设置值采用JDK序列化器
+         .serializeValuesWith(
+                RedisSerializationContext.java().getValueSerializationPair())
+         // 设置键采用String序列化器
+         .serializeKeysWith(
+                RedisSerializationContext.string().getValueSerializationPair())
+         // 禁用前缀
+         .disableKeyPrefix()
+         //设置10 m的键超时时间
+         .entryTtl(Duration.ofMinutes(10));
+   // 创建缓Redis存管理器
+   var redisCacheManager = new RedisCacheManager(writer, config);
+   return redisCacheManager;
+}
+```
 
+上述代码先注入RedisConnectionFactory对象，该对象是由Spring Boot自动生成的。然后在创建Redis缓存管理器对象RedisCacheManager的时候进行如下操作：
 
+* (1)创建不加锁的RedisCacheWriter对象：
+* (2)使用RedisCacheConfiguration对RedisCacheWriter对象属性进行配置，上述代码设置了禁用前缀，并且超时时间为10 m；
+* (3)使用RedisCacheWriter对象和RedisCacheConfiguration对象来构建RedisCacheManager对象。这样就完成了对Redis缓存管理器的自定义。
 
 
 
