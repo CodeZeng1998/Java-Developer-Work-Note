@@ -2227,12 +2227,231 @@ spring.mvc.format.date-time=yyyy-MM-dd HH:mm:ss
 ## 10.3 自定义参数转换规则
 
 ### 10.3.1 处理器转换参数逻辑
+
+```java
+package org.springframework.http.converter;
+/**** imports ****/
+public interface HttpMessageConverter<T> {
+   // 是否可读，其中clazz为Java类型，mediaType为HTTP请求类型
+   boolean canRead(Class<?> clazz, MediaType mediaType);
+　
+   // 判断clazz类型是否能够转换为媒体类型（mediaType）
+   // 其中clazz为java类型，mediaType为HTTP响应类型
+   boolean canWrite(Class<?> clazz, MediaType mediaType);
+　
+   // 可支持的媒体类型列表
+   List<MediaType> getSupportedMediaTypes();
+　
+   // 在canRead()方法验证通过后，读入HTTP请求信息
+   T read(Class<? extends T> clazz, HttpInputMessage inputMessage)
+         throws IOException, HttpMessageNotReadableException;
+　
+   // 在canWrite()方法验证通过后，写入响应
+   void write(T t, MediaType contentType, HttpOutputMessage outputMessage)
+         throws IOException, HttpMessageNotWritableException;
+}
+```
+
+
+
+控制器的参数类型是处理器通过Converter、Formatter、GenericConverter、Printer和Parser这5个接口转换出来的。其中，Converter、Formatter和GenericConverter的不同之处如下。
+
+* Converter：普通的转换器，例如，有一个Integer类型的控制器参数，而HTTP请求发过来的是字符串，此时Converter就会将字符串转换为Integer类型。
+* Formatter：格式化转换器，类似日期和货币等字符串就是通过它按照约定的格式转换出来的。
+* GenericConverter：数组转换器，可将HTTP参数转换为数组或者集合类型。
+
+
+
+**Spring Boot的自动注册机制**
+
+Spring Boot还提供了管理这些转换器的特殊机制。Spring Boot的自动配置类WebMvcAutoConfiguration定义了一个内部类WebMvcAutoConfigurationAdapter，它的configureMessageConverters()和addFormatters()方法。
+
+```java
+// 注册HttpMessageConverter对象，实现请求体到HTTP参数的转换
+@Override
+public void configureMessageConverters(List<HttpMessageConverter<?>> converters) {
+   this.messageConvertersProvider
+      .ifAvailable((customConverters) ->
+         converters.addAll(customConverters.getConverters()));
+}
+　
+......
+　
+//注册数据转换器，可注册的类型为Converter、Formatter、GenericConverter、Printer和Parser
+@Override
+public void addFormatters(FormatterRegistry registry) {
+   /**
+   深入读这个方法的源码，可以看到它会自动将IoC容器中实现了Converter、Formatter、GenericConverter、
+   Printer和Parser接口的Bean都注册到注册机中
+   */
+   ApplicationConversionService.addBeans(registry, this.beanFactory);
+}
+```
+
+configureMessageConverters()方法可以帮助开发者自定义对请求体的处理。注意，addFormatters()方法比较简单，它的作用是在类型转换的注册机中注册数据转换器，在Spring Boot启动Spring MVC的过程中，将Converter、Formatter、GenericConverter、Printer和Parser这5个接口的实现类所创建的Bean自动地注册到类型转换的注册机中。开发者只需要自定义Converter、Formatter和GenericConverter的接口的Bean，Spring Boot就会**自动**地将它们注册到ConversionService对象中。
+
 ### 10.3.2 一对一转换器
 ### 10.3.3 GenericConverter集合和数组转换
+
+
+
+
+
 ## 10.4 数据验证
 
 ### 10.4.1 JSR-303验证
+
+```java
+package com.learn.chapter10.pojo;
+/**** imports ****/
+public class ValidatorPojo {
+   // 非空判断
+   @NotNull(message ="id不能为空")
+   private Long id;
+　
+   @Future(message = "需要一个将来的日期") // 只能是将来的日期
+   // @Past // 只能是过去的日期
+   @DateTimeFormat(pattern = "yyyy-MM-dd") // 日期格式化转换
+   @NotNull // 不能为空
+   private Date date;
+　
+   @NotNull // 不能为空
+   @DecimalMin(value = "0.1") // 最小值为0.1元
+   @DecimalMax(value = "10000.00") // 最大值为10,000元
+   private Double doubleValue = null;
+　
+   @Min(value = 1, message = "最小值为1") // 最小值为1
+   @Max(value = 88, message = "最大值为88") // 最大值为88
+   @NotNull // 不能为空
+   private Integer integer;
+　
+   @Range(min = 1, max = 888, message = "范围为1～888") // 限定范围
+   private Long range;
+　
+   // 邮箱验证
+   @Email(message = "邮箱格式错误")
+   private String email;
+　
+   @Size(min = 20, max = 30, message = "字符串长度要求为20～30")
+   private String size;
+   /**** setters and getters ****/
+}
+```
+
+
+
 ### 10.4.2 参数验证机制
+
+为了能够更加灵活地进行验证，Spring还提供自己的参数验证机制。在进行参数转换时，Spring MVC使用WebDataBinder机制进行管理，在默认的情况下Spring会自动地根据上下文通过注册的转换器转换出控制器所需的参数。在WebDataBinder中除了可以注册转换器，还允许注册验证器(Validator)。
+
+在Spring控制器中，还允许使用注解@InitBinder，这个注解的作用是允许在进入控制器方法前修改WebDataBinder机制。
+
+```java
+package org.springframework.validation;
+/****imports ****/
+public interface Validator {
+   /**
+    *  判定当前验证器是否支持该Class类型的验证
+    * @param clazz --POJO类型
+    * @return 当前验证器是否支持该POJO验证
+    */
+   boolean supports(Class<?> clazz);
+　
+   /**
+    *  如果supports返回true，则这个方法执行验证逻辑
+    * @param target 被验证POJO
+    * @param errors 错误对象
+    */
+   void validate(Object target, Errors errors);
+}
+```
+
+ **自定义用户验证器**
+
+```java
+package com.learn.chapter10.validator;
+/**** imports ****/
+public class UserValidator implements Validator {
+   // 该验证器只支持User类验证
+   @Override
+   public boolean supports(Class<?> clazz) {
+      return clazz.equals(User.class);
+   }
+　
+   // 验证逻辑
+   @Override
+   public void validate(Object target, Errors errors) {
+      // 对象为空
+      if (target == null) {
+         // 直接在参数处报错，这样就不能进入控制器方法
+         errors.rejectValue("", null, "用户不能为空");
+         return;
+      }
+      // 强制转换
+      var user = (User) target;
+      // 用户名非空串
+      if (!StringUtils.hasText(user.getUserName())) {
+         // 增加错误，可以进入控制器方法
+         errors.rejectValue("userName", null, "用户名不能为空");
+      }
+   }
+}
+```
+
+虽然定义了这个验证器，但Spring不会自动启用它，因为还没有将它与WebDataBinder机制进行绑定。Spring MVC提供了一个注解@InitBinder，在运行控制器方法前，处理器会先运行被@InitBinder标注的方法。这时可以将WebDataBinder对象作为参数传递到控制器方法中，通过这层关系得到WebDataBinder对象，这个对象有一个setValidator()方法，它可以绑定自定义的验证器，这样就可以在获取参数之后，通过自定义的验证器来验证参数。WebDataBinder除了可以绑定验证器，还可以进行参数的自定义，例如，不使用@DateTimeFormat获取日期参数。
+
+**绑定验证器**
+
+```java
+/**
+ * 调用控制器前先运行这个方法
+ * @param binder
+ */
+@InitBinder
+public void initBinder(WebDataBinder binder) {
+   // 添加验证器
+   binder.addValidators(new UserValidator());
+   // 定义日期参数格式，参数不再需要使用注解@DateTimeFormat，boolean参数表示是否允许为空
+   binder.registerCustomEditor(Date.class,
+         new CustomDateEditor(new SimpleDateFormat("yyyy-MM-dd"), false));
+}
+　
+/**
+ *
+ * @param user -- 用户对象用StringToUserConverter转换
+ * @param Errors --验证器返回的错误
+ * @param date -- 因为WebDataBinder已经绑定了格式，所以不再需要注解
+ * @return 各类数据
+ */
+@GetMapping("/validator")
+@ResponseBody
+public Map<String, Object> validator(@Valid User user,
+                               Errors Errors, Date date) {
+   var map = new HashMap<String, Object>();
+   map.put("user", user);
+   map.put("date", DateFormat.getDateInstance().format(date));
+   // 判断是否存在错误
+   if (Errors.hasErrors()) {
+      // 获取全部错误
+      var oes = Errors.getAllErrors();
+      for (var oe : oes) {
+         // 判定是否字段错误
+         if (oe instanceof FieldError fieldError) {
+            map.put(fieldError.getField(), fieldError.getDefaultMessage());
+         } else {
+            // 对象错误
+            map.put(oe.getObjectName(), oe.getDefaultMessage());
+         }
+      }
+   }
+   return map;
+}
+```
+
+上述代码中的initBinder()方法因为标注了注解@InitBinder，所以会在控制器方法前被运行，并且将WebDataBinder对象传递进去。initBinder()方法里添加了自定义的验证器UserValidator，而且设置了日期参数格式，所以在控制器方法中不再需要使用注解@DateTimeFormat定义日期格式化。通过这样的自定义，在使用注解@Valid标注User参数后，Spring MVC就会遍历对应的验证器，当遍历到UserValidator时，会运行它的supports()方法。因为该方法会返回true，所以Spring MVC会用这个验证器来验证User类的数据。initBinder()方法对于日期类型也指定了对应的格式，这样控制器的Date类型的参数也不需要再使用注解的协作。我们还要关注一下控制器方法中的Errors参数。它是Spring MVC通过验证器验证后得到的错误信息，由Spring MVC执行验证规则后进行传递。控制器方法首先判断是否存在错误，如果存在错误，则遍历错误，然后将错误信息放入Map中返回。因为控制器方法标注了@ResponseBody，所以最后会将方法返回的结果转化为JSON数据集响应请求。
+
+
+
 ## 10.5 数据模型
 
 ## 10.6 视图和视图解析器
