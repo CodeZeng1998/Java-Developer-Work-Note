@@ -101,7 +101,7 @@ String、StringBuilder、StringBuffer的区别
 
 
 
-![](https://github.com/CodeZeng1998/Java-Developer-Work-Note/blob/main/Interview/image/0000.png?raw=true)
+![](https://github.com/CodeZeng1998/Java-Developer-Work-Note/blob/main/Interview/image/0001.png?raw=true)
 
 **上图由 Pic 生成**
 
