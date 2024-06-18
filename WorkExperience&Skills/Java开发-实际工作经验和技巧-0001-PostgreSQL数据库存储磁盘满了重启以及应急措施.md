@@ -67,7 +67,7 @@ su postgres
 
 
 
-![](https://github.com/CodeZeng1998/Java-Developer-Work-Note/blob/main/WorkExperience&Skills/image/Java%E5%BC%80%E5%8F%91-%E5%B7%A5%E4%BD%9C%E7%BB%8F%E9%AA%8C%E5%92%8C%E6%8A%80%E5%B7%A7-0001-PostgreSQL%E6%95%B0%E6%8D%AE%E5%BA%93%E5%AD%98%E5%82%A8%E7%A3%81%E7%9B%98%E6%BB%A1%E4%BA%86%E9%87%8D%E5%90%AF%E4%BB%A5%E5%8F%8A%E5%BA%94%E6%80%A5%E6%8E%AA%E6%96%BD.png?raw=true)
+![](https://github.com/CodeZeng1998/Java-Developer-Work-Note/blob/main/WorkExperience&Skills/image/Java%E5%BC%80%E5%8F%91-%E5%AE%9E%E9%99%85%E5%B7%A5%E4%BD%9C%E7%BB%8F%E9%AA%8C%E5%92%8C%E6%8A%80%E5%B7%A7-0001-PostgreSQL%E6%95%B0%E6%8D%AE%E5%BA%93%E5%AD%98%E5%82%A8%E7%A3%81%E7%9B%98%E6%BB%A1%E4%BA%86%E9%87%8D%E5%90%AF%E4%BB%A5%E5%8F%8A%E5%BA%94%E6%80%A5%E6%8E%AA%E6%96%BD.png?raw=true)
 
 上图由 Pic 生成
 
