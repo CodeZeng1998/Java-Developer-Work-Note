@@ -25,31 +25,18 @@
 ```shell
 [root@0004 bin]# df -hT
 Filesystem                 Type      Size  Used Avail Use% Mounted on
-devtmpfs                   devtmpfs  7.5G     0  7.5G   0% /dev
-tmpfs                      tmpfs     7.7G   13M  7.7G   1% /dev/shm
-tmpfs                      tmpfs     7.7G   17M  7.7G   1% /run
-tmpfs                      tmpfs     7.7G     0  7.7G   0% /sys/fs/cgroup
-/dev/mapper/rootvg-lv_root xfs        80G   12G   69G  15% /
-tmpfs                      tmpfs     7.7G   20M  7.7G   1% /tmp
 /dev/vdb1                  xfs       2.0T  2.0T  1.1G 100% /data
-/dev/vda1                  vfat     1022M  5.8M 1017M   1% /boot/efi
-tmpfs                      tmpfs     1.6G     0  1.6G   0% /run/user/0
+
 
 
 [postgres@0004 bin]$ lsblk -f
 NAME               FSTYPE      LABEL UUID                                   FSAVAIL FSUSE% MOUNTPOINT
-sr0                                                                                        
-vda                                                                                        
-├─vda1             vfat              9E3B-C6CA                              1016.3M     1% /boot/efi
-└─vda2             LVM2_member       86S1TU-9eNq-9MSn-PU31-4em1-pwce-Q7f2BJ                
-  ├─rootvg-lv_root xfs               43f9f569-e454-41f0-8bb8-7c3ecc132f6d     68.4G    14% /
-  └─rootvg-lv_swap swap              ac03572e-0999-4914-8ef9-62dc49f05f1a                  [SWAP]
 vdb                                                                                        
-└─vdb1             xfs               e81800dd-92f5-45c1-8d90-eab18af8573a      1.1G   100% /data
+└─vdb1             xfs               e81800dd-92f5-45c1-8d90-xab18af1234a      1.1G   100% /data
 
 
 [root@0004 bin]# blkid /dev/vdb1
-/dev/vdb1: UUID="e81800dd-92f5-45c1-8d90-eab18af8573a" TYPE="xfs" PARTUUID="30e0c1bd-01"
+/dev/vdb1: UUID="e81800dd-92f5-45c1-8d90-xab18af1234a " TYPE="xfs" PARTUUID="45e0c1bd-01"
 
 [root@0004 bin]# mount | grep  /dev/vdb1
 /dev/vdb1 on /data type xfs (rw,relatime,attr2,inode64,noquota)
