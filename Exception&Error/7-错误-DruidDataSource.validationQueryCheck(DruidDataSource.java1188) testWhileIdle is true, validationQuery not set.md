@@ -16,7 +16,7 @@
 
 
 
-**问题描述**：Spring Boot 项目启动之后出现一条报错信息。
+**问题描述**：Spring Boot 项目启动之后出现一条报错信息，不影响运行。
 
 
 
@@ -84,6 +84,18 @@ spring:
 注意：如果项目中配置了多个数据源并且都指定了使用druid连接池并且 `test-while-idle`都设置为 true 的话，记得给每个数据库连接都配置好对应的`validation-query`(验证数据库连接状态的查询语句)。
 
 
+
+PS：
+
+* MySQL、PostgreSQL 数据库使用的`validation-query`为`SELECT 1`;
+
+* Oracle 数据库需要使用`SELECT 1 FROM DUAL`;否则会出现如下报错信息。
+
+  ```txt
+  [17:59:24:138] [ERROR] - com.alibaba.druid.pool.DruidDataSource.oracleValidationQueryCheck(DruidDataSource.java:1263) - invalid oracle validationQuery. SELECT 1, may should be : SELECT 1 FROM DUAL
+  ```
+
+  
 
 
 
