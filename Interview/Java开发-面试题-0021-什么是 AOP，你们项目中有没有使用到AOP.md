@@ -1,4 +1,4 @@
-# Java开发-面试题-0021-什么是 AOP，你们项目中有没有是用到AOP
+# Java开发-面试题-0021-什么是 AOP，你们项目中有没有使用到AOP
 
 [TOC]
 
@@ -38,11 +38,19 @@ AOP（面向切面编程，Aspect-Oriented Programming）是一种编程范式�
 
 
 
+**AOP 可用于：**
+
+* **日志**
+* **限流（Redisson + AOP）**
+* **权限验证**
 
 
 
 
-## AOP 是用例子
+
+
+
+## AOP 使用例子
 
 
 
@@ -192,8 +200,8 @@ public class GeneralAspect {
 
 你可以通过`@Order`注解指定切面优先级，确保它们按照期望的顺序执行。例如：
 
-```
-java复制代码@Aspect
+```java
+@Aspect
 @Component
 @Order(1)
 public class AroundAspect { ... }
@@ -214,7 +222,7 @@ public class GeneralAspect { ... }
 
 在Spring中，事务管理主要是通过AOP（面向切面编程）机制和代理模式实现的。Spring提供了声明式事务管理和编程式事务管理两种方式，其中声明式事务管理是最常用的方式。
 
-Spring 中的事务其实本质就是是用 AOP 功能，对方法前后进行拦截，在执行方法之前开启事务，在执行完目标方法之后根据执行情况提交或者回滚事务。
+Spring 中的事务其实本质就是使用 AOP 功能，对方法前后进行拦截，在执行方法之前开启事务，在执行完目标方法之后根据执行情况提交或者回滚事务。
 
 
 
